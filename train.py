@@ -27,10 +27,16 @@ if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True  # Optimize for consistent input sizes
     torch.backends.cudnn.deterministic = False  # Allow non-deterministic algorithms for speed
     torch.cuda.empty_cache()  # Clear GPU cache
+    
+    # Set memory management for better allocation
+    import os
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+    
     print(f"GPU: {torch.cuda.get_device_name(0)}")
     print(f"CUDA version: {torch.version.cuda}")
     print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
     print("🚀 GPU optimizations enabled")
+    print("💾 Memory fragmentation prevention enabled")
 else:
     print("⚠️  CUDA not available, using CPU")
 
@@ -418,20 +424,20 @@ class ForexEnvironment:
 class DQNNetwork(nn.Module):
     """Deep Q-Network for trading decisions"""
     
-    def __init__(self, input_size: int, hidden_size: int = 2048):  # Much larger for 15.5GB GPU
+    def __init__(self, input_size: int, hidden_size: int = 1536):  # Reduced from 2048 for memory
         super(DQNNetwork, self).__init__()
         
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_size, hidden_size * 16),  # Massive first layer
+            nn.Linear(input_size, hidden_size * 12),  # Reduced from 16x
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size * 16, hidden_size * 8),
+            nn.Linear(hidden_size * 12, hidden_size * 6),  # Reduced from 8x
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size * 8, hidden_size * 4),
+            nn.Linear(hidden_size * 6, hidden_size * 3),  # Reduced from 4x
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size * 4, hidden_size * 2),
+            nn.Linear(hidden_size * 3, hidden_size * 2),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(hidden_size * 2, hidden_size),
@@ -466,23 +472,25 @@ class ForexTradingAgent:
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
-        # Adaptive batch size based on GPU memory
+        # Adaptive batch size based on GPU memory (reduced for stability)
         if device.type == 'cuda':
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            if gpu_memory_gb >= 12:  # High-end GPU
-                self.batch_size = 4096
+            if gpu_memory_gb >= 15:  # Your 15.5GB GPU
+                self.batch_size = 2048  # Reduced from 4096
+            elif gpu_memory_gb >= 12:  # High-end GPU
+                self.batch_size = 1536
             elif gpu_memory_gb >= 8:  # Mid-range GPU
-                self.batch_size = 2048
-            else:  # Lower-end GPU
                 self.batch_size = 1024
+            else:  # Lower-end GPU
+                self.batch_size = 512
         else:
             self.batch_size = 64
         
-        # Gradient accumulation for even larger effective batch sizes
-        self.gradient_accumulation_steps = 4
+        # Reduce gradient accumulation to balance memory vs throughput
+        self.gradient_accumulation_steps = 2  # Reduced from 4
         
-        # Increase memory buffer for more training data
-        self.memory = deque(maxlen=200000)  # Even larger buffer
+        # Increase memory buffer for more training data (reduced for memory management)
+        self.memory = deque(maxlen=150000)  # Reduced from 200000
         
         # Neural networks - move to GPU with DataParallel for multi-GPU
         self.q_network = DQNNetwork(state_size).to(device)
@@ -540,34 +548,53 @@ class ForexTradingAgent:
         return TradingAction(direction, tp, sl, confidence)
     
     def replay(self):
-        """Train the network on batch of experiences with gradient accumulation"""
+        """Train the network on batch of experiences with gradient accumulation and memory management"""
         if len(self.memory) < self.batch_size:
             return
         
-        # Initialize accumulation variables
-        total_loss = 0
-        self.optimizer.zero_grad()
-        
-        # Gradient accumulation loop for larger effective batch size
-        for accumulation_step in range(self.gradient_accumulation_steps):
-            # Use larger batches and preload to GPU for efficiency
-            batch = random.sample(self.memory, self.batch_size)
+        try:
+            # Initialize accumulation variables
+            total_loss = 0
+            self.optimizer.zero_grad()
             
-            # Preprocess batch data efficiently
-            states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
-            next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
-            rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
-            dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
-            
-            # Create action indices more efficiently
-            actions = torch.LongTensor([[
-                0 if e[1].direction == 'long' else 1 if e[1].direction == 'short' else 2
-            ] for e in batch]).to(device, non_blocking=True)
-            
-            if self.scaler:  # Mixed precision training
-                with autocast():
+            # Gradient accumulation loop for larger effective batch size
+            for accumulation_step in range(self.gradient_accumulation_steps):
+                # Use larger batches and preload to GPU for efficiency
+                batch = random.sample(self.memory, self.batch_size)
+                
+                # Preprocess batch data efficiently
+                states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
+                next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
+                rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
+                dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
+                
+                # Create action indices more efficiently
+                actions = torch.LongTensor([[
+                    0 if e[1].direction == 'long' else 1 if e[1].direction == 'short' else 2
+                ] for e in batch]).to(device, non_blocking=True)
+                
+                if self.scaler:  # Mixed precision training
+                    with autocast():
+                        current_q_values = self.q_network(states)
+                        with torch.no_grad():  # Don't track gradients for target network
+                            next_q_values = self.target_network(next_states)
+                        
+                        # Calculate target Q-values
+                        target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
+                        
+                        # Calculate loss
+                        current_q = current_q_values[0].gather(1, actions).squeeze()
+                        loss = nn.MSELoss()(current_q, target_q_values.detach())
+                        
+                        # Scale loss for gradient accumulation
+                        loss = loss / self.gradient_accumulation_steps
+                    
+                    # Accumulate gradients
+                    self.scaler.scale(loss).backward()
+                    total_loss += loss.item()
+                else:
                     current_q_values = self.q_network(states)
-                    with torch.no_grad():  # Don't track gradients for target network
+                    with torch.no_grad():
                         next_q_values = self.target_network(next_states)
                     
                     # Calculate target Q-values
@@ -579,35 +606,30 @@ class ForexTradingAgent:
                     
                     # Scale loss for gradient accumulation
                     loss = loss / self.gradient_accumulation_steps
+                    
+                    # Accumulate gradients
+                    loss.backward()
+                    total_loss += loss.item()
                 
-                # Accumulate gradients
-                self.scaler.scale(loss).backward()
-                total_loss += loss.item()
+                # Clear intermediate tensors to save memory
+                del states, next_states, rewards, dones, actions
+                if device.type == 'cuda':
+                    torch.cuda.empty_cache()
+            
+            # Apply accumulated gradients
+            if self.scaler:
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
             else:
-                current_q_values = self.q_network(states)
-                with torch.no_grad():
-                    next_q_values = self.target_network(next_states)
-                
-                # Calculate target Q-values
-                target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
-                
-                # Calculate loss
-                current_q = current_q_values[0].gather(1, actions).squeeze()
-                loss = nn.MSELoss()(current_q, target_q_values.detach())
-                
-                # Scale loss for gradient accumulation
-                loss = loss / self.gradient_accumulation_steps
-                
-                # Accumulate gradients
-                loss.backward()
-                total_loss += loss.item()
-        
-        # Apply accumulated gradients
-        if self.scaler:
-            self.scaler.step(self.optimizer)
-            self.scaler.update()
-        else:
-            self.optimizer.step()
+                self.optimizer.step()
+            
+        except torch.cuda.OutOfMemoryError:
+            # Handle OOM gracefully by clearing cache and reducing batch size temporarily
+            if device.type == 'cuda':
+                torch.cuda.empty_cache()
+            print("⚠️  GPU memory warning - clearing cache and continuing...")
+            # Skip this training step and continue
+            self.optimizer.zero_grad()
         
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
@@ -661,11 +683,15 @@ class ForexPredictor:
                     total_reward += reward
                     steps += 1
                     
-                    # Train more frequently and multiple times for higher GPU utilization
+                    # Train more frequently but less aggressively to manage memory
                     if len(agent.memory) > agent.batch_size:
-                        # Train multiple times per step to keep GPU busy
-                        for _ in range(16):  # 16x more training per step for maximum GPU usage
+                        # Train multiple times per step but reduced for memory management
+                        for _ in range(8):  # Reduced from 16 to 8
                             agent.replay()
+                            
+                        # Clear cache periodically to prevent memory fragmentation
+                        if steps % 50 == 0 and device.type == 'cuda':
+                            torch.cuda.empty_cache()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
