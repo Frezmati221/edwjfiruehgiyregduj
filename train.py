@@ -630,6 +630,12 @@ class ForexTradingAgent:
             print("⚠️  GPU memory warning - clearing cache and continuing...")
             # Skip this training step and continue
             self.optimizer.zero_grad()
+        except Exception as e:
+            # Handle any other errors gracefully
+            print(f"⚠️  Training error: {str(e)} - skipping batch...")
+            self.optimizer.zero_grad()
+            if device.type == 'cuda':
+                torch.cuda.empty_cache()
         
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
@@ -674,8 +680,10 @@ class ForexPredictor:
                 total_reward = 0
                 done = False
                 steps = 0
+                last_step_time = start_time
                 
                 while not done:
+                    step_start_time = time.time()
                     action = agent.act(state)
                     next_state, reward, done = env.step(action)
                     agent.remember(state, action, reward, next_state, done)
@@ -686,12 +694,35 @@ class ForexPredictor:
                     # Train more frequently but less aggressively to manage memory
                     if len(agent.memory) > agent.batch_size:
                         # Train multiple times per step but reduced for memory management
-                        for _ in range(8):  # Reduced from 16 to 8
-                            agent.replay()
+                        train_attempts = 0
+                        max_train_attempts = 4  # Further reduced to prevent freezing
+                        
+                        for train_idx in range(max_train_attempts):
+                            try:
+                                agent.replay()
+                                train_attempts += 1
+                            except Exception as e:
+                                print(f"⚠️  Training step {train_idx} failed: {str(e)} - continuing...")
+                                if device.type == 'cuda':
+                                    torch.cuda.empty_cache()
+                                break  # Skip remaining training steps for this iteration
                             
                         # Clear cache periodically to prevent memory fragmentation
-                        if steps % 50 == 0 and device.type == 'cuda':
+                        if steps % 25 == 0 and device.type == 'cuda':  # More frequent clearing
                             torch.cuda.empty_cache()
+                    
+                    # Anti-freeze protection: check if training is taking too long
+                    step_time = time.time() - step_start_time
+                    if step_time > 30:  # If a single step takes more than 30 seconds
+                        print(f"⚠️  Step {steps} took {step_time:.1f}s - potential freeze detected, clearing cache...")
+                        if device.type == 'cuda':
+                            torch.cuda.empty_cache()
+                    
+                    # Progress update every 100 steps
+                    if steps % 100 == 0:
+                        elapsed = time.time() - last_step_time
+                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 100 steps: {elapsed:.1f}s")
+                        last_step_time = time.time()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
