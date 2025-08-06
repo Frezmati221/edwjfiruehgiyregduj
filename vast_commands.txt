@@ -1,0 +1,20 @@
+# Vast.ai Startup Commands
+# Copy and paste these commands when your instance starts
+
+# 1. Extract your training files
+cd /workspace
+wget YOUR_FILE_URL/forex-ai-training.tar.gz  # Upload to GitHub releases or file hosting
+tar -xzf forex-ai-training.tar.gz
+
+# 2. Install dependencies
+pip install -r requirements.txt
+
+# 3. Start training (adjust parameters as needed)
+python train.py --epochs 500 --pairs USDJPY --period 2y
+
+# 4. Monitor training (in another terminal)
+tail -f logs/training.log
+
+# 5. Download model when complete
+# Your trained model will be in /workspace/models/
+# Use Vast.ai file manager to download
