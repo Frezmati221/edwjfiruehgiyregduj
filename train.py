@@ -21,10 +21,16 @@ warnings.filterwarnings('ignore')
 # GPU setup
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 print(f"🖥️  Using device: {device}")
+
+# Enable optimizations for maximum GPU usage
 if torch.cuda.is_available():
+    torch.backends.cudnn.benchmark = True  # Optimize for consistent input sizes
+    torch.backends.cudnn.deterministic = False  # Allow non-deterministic algorithms for speed
+    torch.cuda.empty_cache()  # Clear GPU cache
     print(f"GPU: {torch.cuda.get_device_name(0)}")
     print(f"CUDA version: {torch.version.cuda}")
     print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    print("🚀 GPU optimizations enabled")
 else:
     print("⚠️  CUDA not available, using CPU")
 
@@ -412,14 +418,17 @@ class ForexEnvironment:
 class DQNNetwork(nn.Module):
     """Deep Q-Network for trading decisions"""
     
-    def __init__(self, input_size: int, hidden_size: int = 512):  # Increased from 256
+    def __init__(self, input_size: int, hidden_size: int = 1024):  # Even larger network
         super(DQNNetwork, self).__init__()
         
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_size, hidden_size * 4),  # Increased multiplier
+            nn.Linear(input_size, hidden_size * 8),  # Much larger first layer
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size * 4, hidden_size * 2),  # Added extra layer
+            nn.Linear(hidden_size * 8, hidden_size * 4),
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_size * 4, hidden_size * 2),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(hidden_size * 2, hidden_size),
@@ -448,13 +457,16 @@ class ForexTradingAgent:
     
     def __init__(self, state_size: int, learning_rate: float = 0.001):
         self.state_size = state_size
-        self.memory = deque(maxlen=10000)
+        self.memory = deque(maxlen=100000)  # Much larger buffer
         self.epsilon = 1.0
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = learning_rate
         self.gamma = 0.95
-        self.batch_size = 256  # Increased from 32 for better GPU utilization
+        self.batch_size = 1024 if device.type == 'cuda' else 64  # Much larger batch for GPU
+        
+        # Increase memory buffer for more training data
+        self.memory = deque(maxlen=100000)  # 10x larger buffer
         
         # Neural networks - move to GPU
         self.q_network = DQNNetwork(state_size).to(device)
@@ -508,22 +520,32 @@ class ForexTradingAgent:
         if len(self.memory) < self.batch_size:
             return
         
+        # Use larger batches and preload to GPU for efficiency
         batch = random.sample(self.memory, self.batch_size)
-        states = torch.FloatTensor([e[0] for e in batch]).to(device)
-        next_states = torch.FloatTensor([e[3] for e in batch]).to(device)
-        rewards = torch.FloatTensor([e[2] for e in batch]).to(device)
-        dones = torch.FloatTensor([e[4] for e in batch]).to(device)
+        
+        # Preprocess batch data efficiently
+        states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
+        next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
+        rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
+        dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
+        
+        # Create action indices more efficiently
+        actions = torch.LongTensor([[
+            0 if e[1].direction == 'long' else 1 if e[1].direction == 'short' else 2
+        ] for e in batch]).to(device, non_blocking=True)
         
         if self.scaler:  # Mixed precision training
             with autocast():
                 current_q_values = self.q_network(states)
-                next_q_values = self.target_network(next_states)
+                with torch.no_grad():  # Don't track gradients for target network
+                    next_q_values = self.target_network(next_states)
                 
                 # Calculate target Q-values
                 target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
                 
                 # Calculate loss
-                loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch]).to(device)).squeeze(), target_q_values)
+                current_q = current_q_values[0].gather(1, actions).squeeze()
+                loss = nn.MSELoss()(current_q, target_q_values.detach())
             
             # Backpropagation with mixed precision
             self.optimizer.zero_grad()
@@ -532,13 +554,15 @@ class ForexTradingAgent:
             self.scaler.update()
         else:
             current_q_values = self.q_network(states)
-            next_q_values = self.target_network(next_states)
+            with torch.no_grad():
+                next_q_values = self.target_network(next_states)
             
             # Calculate target Q-values
             target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
             
             # Calculate loss
-            loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch]).to(device)).squeeze(), target_q_values)
+            current_q = current_q_values[0].gather(1, actions).squeeze()
+            loss = nn.MSELoss()(current_q, target_q_values.detach())
             
             # Backpropagation
             self.optimizer.zero_grad()
@@ -597,8 +621,11 @@ class ForexPredictor:
                     total_reward += reward
                     steps += 1
                     
-                    if len(agent.memory) > 32:
-                        agent.replay()
+                    # Train more frequently and multiple times for higher GPU utilization
+                    if len(agent.memory) > agent.batch_size:
+                        # Train multiple times per step to keep GPU busy
+                        for _ in range(8):  # 8x more training per step
+                            agent.replay()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
@@ -618,10 +645,13 @@ class ForexPredictor:
                 # Add GPU memory info if using CUDA
                 gpu_info = ""
                 if device.type == 'cuda':
+                    torch.cuda.synchronize()  # Ensure all operations complete
                     gpu_memory = torch.cuda.memory_allocated() / 1024**3  # GB
                     gpu_max_memory = torch.cuda.max_memory_allocated() / 1024**3  # GB
-                    gpu_utilization = (gpu_memory / torch.cuda.get_device_properties(0).total_memory) * 100
-                    gpu_info = f", GPU: {gpu_memory:.1f}/{gpu_max_memory:.1f}GB ({gpu_utilization:.1f}%)"
+                    gpu_reserved = torch.cuda.memory_reserved() / 1024**3  # GB
+                    total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
+                    gpu_utilization = (gpu_reserved / total_memory) * 100
+                    gpu_info = f", GPU: {gpu_memory:.1f}/{gpu_reserved:.1f}/{total_memory:.1f}GB ({gpu_utilization:.1f}%)"
                 
                 postfix = f"Reward: {total_reward:.2f}, Avg: {recent_avg:.2f}, Best: {best_reward:.2f}, ε: {agent.epsilon:.3f}, Steps: {steps}, Time: {epoch_time:.1f}s{gpu_info}"
                 pbar.set_postfix_str(postfix)
