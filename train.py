@@ -17,6 +17,16 @@ from tqdm import tqdm
 import time
 warnings.filterwarnings('ignore')
 
+# GPU setup
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+print(f"🖥️  Using device: {device}")
+if torch.cuda.is_available():
+    print(f"GPU: {torch.cuda.get_device_name(0)}")
+    print(f"CUDA version: {torch.version.cuda}")
+    print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+else:
+    print("⚠️  CUDA not available, using CPU")
+
 @dataclass
 class TradingAction:
     """Trading action with position details"""
@@ -442,12 +452,14 @@ class ForexTradingAgent:
         self.gamma = 0.95
         self.batch_size = 32
         
-        # Neural networks
-        self.q_network = DQNNetwork(state_size)
-        self.target_network = DQNNetwork(state_size)
+        # Neural networks - move to GPU
+        self.q_network = DQNNetwork(state_size).to(device)
+        self.target_network = DQNNetwork(state_size).to(device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
         
         self.update_target_network()
+        
+        print(f"🧠 Neural networks initialized on {device}")
         
     def update_target_network(self):
         """Copy weights from main network to target network"""
@@ -465,8 +477,8 @@ class ForexTradingAgent:
             tp = random.uniform(20, 100)  # pips
             sl = random.uniform(10, 50)   # pips
         else:
-            # Predict using network
-            state_tensor = torch.FloatTensor(state).unsqueeze(0)
+            # Predict using network - move tensor to GPU
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
             with torch.no_grad():
                 direction_q, tp_q, sl_q = self.q_network(state_tensor)
             
@@ -488,10 +500,10 @@ class ForexTradingAgent:
             return
         
         batch = random.sample(self.memory, self.batch_size)
-        states = torch.FloatTensor([e[0] for e in batch])
-        next_states = torch.FloatTensor([e[3] for e in batch])
-        rewards = torch.FloatTensor([e[2] for e in batch])
-        dones = torch.FloatTensor([e[4] for e in batch])
+        states = torch.FloatTensor([e[0] for e in batch]).to(device)
+        next_states = torch.FloatTensor([e[3] for e in batch]).to(device)
+        rewards = torch.FloatTensor([e[2] for e in batch]).to(device)
+        dones = torch.FloatTensor([e[4] for e in batch]).to(device)
         
         current_q_values = self.q_network(states)
         next_q_values = self.target_network(next_states)
@@ -500,7 +512,7 @@ class ForexTradingAgent:
         target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
         
         # Calculate loss
-        loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch])).squeeze(), target_q_values)
+        loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch]).to(device)).squeeze(), target_q_values)
         
         # Backpropagation
         self.optimizer.zero_grad()
@@ -576,7 +588,14 @@ class ForexPredictor:
                 
                 # Update progress bar with detailed info
                 epoch_time = time.time() - start_time
-                postfix = f"Reward: {total_reward:.2f}, Avg: {recent_avg:.2f}, Best: {best_reward:.2f}, ε: {agent.epsilon:.3f}, Steps: {steps}, Time: {epoch_time:.1f}s"
+                
+                # Add GPU memory info if using CUDA
+                gpu_info = ""
+                if device.type == 'cuda':
+                    gpu_memory = torch.cuda.memory_allocated() / 1024**3  # GB
+                    gpu_info = f", GPU: {gpu_memory:.1f}GB"
+                
+                postfix = f"Reward: {total_reward:.2f}, Avg: {recent_avg:.2f}, Best: {best_reward:.2f}, ε: {agent.epsilon:.3f}, Steps: {steps}, Time: {epoch_time:.1f}s{gpu_info}"
                 pbar.set_postfix_str(postfix)
                 
                 # Print detailed progress every 20 epochs
@@ -640,13 +659,16 @@ class ForexPredictor:
     
     def load_model(self, filepath: str):
         """Load trained models"""
-        checkpoint = torch.load(filepath)
+        checkpoint = torch.load(filepath, map_location=device)
         for pair, agent_data in checkpoint['agents'].items():
             state_size = agent_data['q_network']['feature_extractor.0.weight'].shape[1]
             agent = ForexTradingAgent(state_size)
             agent.q_network.load_state_dict(agent_data['q_network'])
             agent.target_network.load_state_dict(agent_data['target_network'])
             agent.epsilon = agent_data['epsilon']
+            # Ensure models are on the correct device
+            agent.q_network.to(device)
+            agent.target_network.to(device)
             self.agents[pair] = agent
 
 # Example usage
@@ -659,12 +681,19 @@ if __name__ == "__main__":
     parser.add_argument('--save-dir', type=str, default='models', help='Directory to save models (default: models)')
     parser.add_argument('--pairs', type=str, nargs='+', default=['EURUSD', 'GBPUSD', 'USDJPY'], 
                        help='Currency pairs to train (default: EURUSD GBPUSD USDJPY)')
+    parser.add_argument('--no-gpu', action='store_true', help='Force CPU usage even if GPU is available')
     
     args = parser.parse_args()
+    
+    # Override device if --no-gpu is specified
+    if args.no_gpu:
+        device = torch.device('cpu')
+        print("🔄 Forced CPU usage (--no-gpu flag)")
     
     print("="*60)
     print("🚀 Forex AI Trading Model Training")
     print("="*60)
+    print(f"🖥️  Device: {device}")
     print(f"📊 Data period: {args.period}")
     print(f"⏰ Data interval: {args.interval}")
     print(f"🔄 Training epochs: {args.epochs}")
