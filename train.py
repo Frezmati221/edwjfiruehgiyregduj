@@ -702,16 +702,9 @@ class ForexPredictor:
                 done = False
                 steps = 0
                 last_step_time = start_time
-                epoch_timeout = 30  # Maximum seconds per epoch
                 
                 while not done:
                     step_start_time = time.time()
-                    
-                    # Check for epoch timeout to prevent freezing
-                    epoch_elapsed = time.time() - start_time
-                    if epoch_elapsed > epoch_timeout:
-                        print(f"⚠️  Epoch {epoch} timeout ({epoch_elapsed:.1f}s) - forcing completion")
-                        break
                     
                     try:
                         action = agent.act(state)
