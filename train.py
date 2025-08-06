@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.cuda.amp import autocast, GradScaler  # For mixed precision
 from collections import deque
 import random
 from typing import Dict, List, Tuple, Optional
@@ -411,11 +412,14 @@ class ForexEnvironment:
 class DQNNetwork(nn.Module):
     """Deep Q-Network for trading decisions"""
     
-    def __init__(self, input_size: int, hidden_size: int = 256):
+    def __init__(self, input_size: int, hidden_size: int = 512):  # Increased from 256
         super(DQNNetwork, self).__init__()
         
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_size, hidden_size * 2),
+            nn.Linear(input_size, hidden_size * 4),  # Increased multiplier
+            nn.ReLU(),
+            nn.Dropout(0.2),
+            nn.Linear(hidden_size * 4, hidden_size * 2),  # Added extra layer
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(hidden_size * 2, hidden_size),
@@ -450,16 +454,21 @@ class ForexTradingAgent:
         self.epsilon_decay = 0.995
         self.learning_rate = learning_rate
         self.gamma = 0.95
-        self.batch_size = 32
+        self.batch_size = 256  # Increased from 32 for better GPU utilization
         
         # Neural networks - move to GPU
         self.q_network = DQNNetwork(state_size).to(device)
         self.target_network = DQNNetwork(state_size).to(device)
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
         
+        # Mixed precision training
+        self.scaler = GradScaler() if device.type == 'cuda' else None
+        
         self.update_target_network()
         
         print(f"🧠 Neural networks initialized on {device}")
+        if self.scaler:
+            print("⚡ Mixed precision training enabled")
         
     def update_target_network(self):
         """Copy weights from main network to target network"""
@@ -505,19 +514,36 @@ class ForexTradingAgent:
         rewards = torch.FloatTensor([e[2] for e in batch]).to(device)
         dones = torch.FloatTensor([e[4] for e in batch]).to(device)
         
-        current_q_values = self.q_network(states)
-        next_q_values = self.target_network(next_states)
-        
-        # Calculate target Q-values
-        target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
-        
-        # Calculate loss
-        loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch]).to(device)).squeeze(), target_q_values)
-        
-        # Backpropagation
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        if self.scaler:  # Mixed precision training
+            with autocast():
+                current_q_values = self.q_network(states)
+                next_q_values = self.target_network(next_states)
+                
+                # Calculate target Q-values
+                target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
+                
+                # Calculate loss
+                loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch]).to(device)).squeeze(), target_q_values)
+            
+            # Backpropagation with mixed precision
+            self.optimizer.zero_grad()
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            current_q_values = self.q_network(states)
+            next_q_values = self.target_network(next_states)
+            
+            # Calculate target Q-values
+            target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
+            
+            # Calculate loss
+            loss = nn.MSELoss()(current_q_values[0].gather(1, torch.LongTensor([[e[1].direction == 'long' and 0 or e[1].direction == 'short' and 1 or 2] for e in batch]).to(device)).squeeze(), target_q_values)
+            
+            # Backpropagation
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
         
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
@@ -593,7 +619,9 @@ class ForexPredictor:
                 gpu_info = ""
                 if device.type == 'cuda':
                     gpu_memory = torch.cuda.memory_allocated() / 1024**3  # GB
-                    gpu_info = f", GPU: {gpu_memory:.1f}GB"
+                    gpu_max_memory = torch.cuda.max_memory_allocated() / 1024**3  # GB
+                    gpu_utilization = (gpu_memory / torch.cuda.get_device_properties(0).total_memory) * 100
+                    gpu_info = f", GPU: {gpu_memory:.1f}/{gpu_max_memory:.1f}GB ({gpu_utilization:.1f}%)"
                 
                 postfix = f"Reward: {total_reward:.2f}, Avg: {recent_avg:.2f}, Best: {best_reward:.2f}, ε: {agent.epsilon:.3f}, Steps: {steps}, Time: {epoch_time:.1f}s{gpu_info}"
                 pbar.set_postfix_str(postfix)
