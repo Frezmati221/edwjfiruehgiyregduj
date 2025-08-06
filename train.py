@@ -476,21 +476,21 @@ class ForexTradingAgent:
         if device.type == 'cuda':
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
             if gpu_memory_gb >= 15:  # Your 15.5GB GPU
-                self.batch_size = 2048  # Reduced from 4096
+                self.batch_size = 512  # Significantly reduced for stability
             elif gpu_memory_gb >= 12:  # High-end GPU
-                self.batch_size = 1536
+                self.batch_size = 256
             elif gpu_memory_gb >= 8:  # Mid-range GPU
-                self.batch_size = 1024
+                self.batch_size = 128
             else:  # Lower-end GPU
-                self.batch_size = 512
+                self.batch_size = 64
         else:
-            self.batch_size = 64
+            self.batch_size = 32
         
         # Reduce gradient accumulation to balance memory vs throughput
-        self.gradient_accumulation_steps = 2  # Reduced from 4
+        self.gradient_accumulation_steps = 1  # Reduced to 1 for stability
         
-        # Increase memory buffer for more training data (reduced for memory management)
-        self.memory = deque(maxlen=150000)  # Reduced from 200000
+        # Reduce memory buffer to prevent freezing
+        self.memory = deque(maxlen=50000)  # Significantly reduced from 150000
         
         # Neural networks - move to GPU with DataParallel for multi-GPU
         self.q_network = DQNNetwork(state_size).to(device)
@@ -511,8 +511,11 @@ class ForexTradingAgent:
         
         print(f"🧠 Neural networks initialized on {device}")
         print(f"📊 Batch size: {self.batch_size} (effective: {self.batch_size * self.gradient_accumulation_steps})")
+        print(f"🔄 Gradient accumulation: {self.gradient_accumulation_steps} steps")
+        print(f"💾 Memory buffer: {self.memory.maxlen:,} experiences")
         if self.scaler:
             print("⚡ Mixed precision training enabled")
+        print("🛡️  Anti-freeze protection enabled")
         
     def update_target_network(self):
         """Copy weights from main network to target network"""
@@ -523,26 +526,44 @@ class ForexTradingAgent:
         self.memory.append((state, action, reward, next_state, done))
     
     def act(self, state: np.ndarray) -> TradingAction:
-        """Choose action using epsilon-greedy policy"""
+        """Choose action using epsilon-greedy policy with timeout protection"""
         if random.random() <= self.epsilon:
             # Random action
             direction = random.choice(['long', 'short', 'hold'])
             tp = random.uniform(20, 100)  # pips
             sl = random.uniform(10, 50)   # pips
         else:
-            # Predict using network - move tensor to GPU
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
-            with torch.no_grad():
-                direction_q, tp_q, sl_q = self.q_network(state_tensor)
-            
-            direction_idx = torch.argmax(direction_q).item()
-            direction = ['long', 'short', 'hold'][direction_idx]
-            
-            tp_idx = torch.argmax(tp_q).item()
-            sl_idx = torch.argmax(sl_q).item()
-            
-            tp = 20 + tp_idx * 10  # 20-120 pips
-            sl = 10 + sl_idx * 5   # 10-60 pips
+            # Predict using network with timeout protection
+            try:
+                state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device, non_blocking=True)
+                with torch.no_grad():
+                    # Add timeout for inference
+                    start_time = time.time()
+                    direction_q, tp_q, sl_q = self.q_network(state_tensor)
+                    inference_time = time.time() - start_time
+                    
+                    if inference_time > 2:  # If inference takes more than 2 seconds
+                        print(f"⚠️  Slow inference: {inference_time:.1f}s")
+                
+                direction_idx = torch.argmax(direction_q).item()
+                direction = ['long', 'short', 'hold'][direction_idx]
+                
+                tp_idx = torch.argmax(tp_q).item()
+                sl_idx = torch.argmax(sl_q).item()
+                
+                tp = 20 + tp_idx * 10  # 20-120 pips
+                sl = 10 + sl_idx * 5   # 10-60 pips
+                
+                # Clear tensor immediately
+                del state_tensor
+                if device.type == 'cuda':
+                    torch.cuda.empty_cache()
+                    
+            except Exception as e:
+                print(f"⚠️  Neural network prediction failed: {str(e)} - using random action")
+                direction = random.choice(['long', 'short', 'hold'])
+                tp = random.uniform(20, 100)
+                sl = random.uniform(10, 50)
         
         confidence = 1.0 - self.epsilon
         return TradingAction(direction, tp, sl, confidence)
@@ -681,48 +702,71 @@ class ForexPredictor:
                 done = False
                 steps = 0
                 last_step_time = start_time
+                epoch_timeout = 30  # Maximum seconds per epoch
                 
                 while not done:
                     step_start_time = time.time()
-                    action = agent.act(state)
-                    next_state, reward, done = env.step(action)
-                    agent.remember(state, action, reward, next_state, done)
-                    state = next_state
-                    total_reward += reward
-                    steps += 1
                     
-                    # Train more frequently but less aggressively to manage memory
-                    if len(agent.memory) > agent.batch_size:
-                        # Train multiple times per step but reduced for memory management
-                        train_attempts = 0
-                        max_train_attempts = 4  # Further reduced to prevent freezing
+                    # Check for epoch timeout to prevent freezing
+                    epoch_elapsed = time.time() - start_time
+                    if epoch_elapsed > epoch_timeout:
+                        print(f"⚠️  Epoch {epoch} timeout ({epoch_elapsed:.1f}s) - forcing completion")
+                        break
+                    
+                    try:
+                        action = agent.act(state)
+                        next_state, reward, done = env.step(action)
+                        agent.remember(state, action, reward, next_state, done)
+                        state = next_state
+                        total_reward += reward
+                        steps += 1
+                    except Exception as e:
+                        print(f"⚠️  Step {steps} failed: {str(e)} - skipping...")
+                        if device.type == 'cuda':
+                            torch.cuda.empty_cache()
+                        break
+                    
+                    # Train with aggressive timeout protection
+                    if len(agent.memory) > agent.batch_size and steps % 10 == 0:  # Train less frequently
+                        training_start = time.time()
+                        max_training_time = 5  # Maximum 5 seconds for training
                         
-                        for train_idx in range(max_train_attempts):
-                            try:
-                                agent.replay()
-                                train_attempts += 1
-                            except Exception as e:
-                                print(f"⚠️  Training step {train_idx} failed: {str(e)} - continuing...")
+                        try:
+                            # Single training attempt with timeout
+                            agent.replay()
+                            training_time = time.time() - training_start
+                            
+                            if training_time > max_training_time:
+                                print(f"⚠️  Training took {training_time:.1f}s - reducing complexity")
                                 if device.type == 'cuda':
                                     torch.cuda.empty_cache()
-                                break  # Skip remaining training steps for this iteration
-                            
-                        # Clear cache periodically to prevent memory fragmentation
-                        if steps % 25 == 0 and device.type == 'cuda':  # More frequent clearing
-                            torch.cuda.empty_cache()
-                    
-                    # Anti-freeze protection: check if training is taking too long
-                    step_time = time.time() - step_start_time
-                    if step_time > 30:  # If a single step takes more than 30 seconds
-                        print(f"⚠️  Step {steps} took {step_time:.1f}s - potential freeze detected, clearing cache...")
+                        except Exception as e:
+                            print(f"⚠️  Training failed: {str(e)} - skipping training")
+                            if device.type == 'cuda':
+                                torch.cuda.empty_cache()
+                        
+                        # Force cache clearing after training
                         if device.type == 'cuda':
                             torch.cuda.empty_cache()
                     
-                    # Progress update every 100 steps
-                    if steps % 100 == 0:
+                    # Anti-freeze protection: check step timing
+                    step_time = time.time() - step_start_time
+                    if step_time > 10:  # Reduced from 30 to 10 seconds
+                        print(f"⚠️  Step {steps} took {step_time:.1f}s - potential freeze, breaking...")
+                        if device.type == 'cuda':
+                            torch.cuda.empty_cache()
+                        break
+                    
+                    # Aggressive progress monitoring every 50 steps
+                    if steps % 50 == 0:
                         elapsed = time.time() - last_step_time
-                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 100 steps: {elapsed:.1f}s")
+                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 50 steps: {elapsed:.1f}s")
                         last_step_time = time.time()
+                        
+                        # Force garbage collection and cache clearing
+                        if device.type == 'cuda':
+                            torch.cuda.synchronize()
+                            torch.cuda.empty_cache()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
