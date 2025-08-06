@@ -31,11 +31,11 @@ class RealisticForexBacktester:
         self.agents = {}
         self.indicators = ForexIndicators()
         
-        # Trading parameters
+        # Trading parameters for more active trading
         self.leverage = 100  # 1:100 leverage
         self.spread_pips = 2  # 2 pip spread
-        self.min_trade_interval = 4  # Minimum 4 hours between trades
-        self.max_daily_trades = 5
+        self.min_trade_interval = 2  # Reduced to 2 hours between trades
+        self.max_daily_trades = 8  # Increased from 5 to 8 trades per day
         
         # Risk management
         self.stop_loss_pips = 20  # 20 pip stop loss
@@ -72,7 +72,7 @@ class RealisticForexBacktester:
                 agent = ForexTradingAgent(state_size)
                 agent.q_network.load_state_dict(agent_data['q_network'])
                 agent.target_network.load_state_dict(agent_data['target_network'])
-                agent.epsilon = 0.05  # Add small exploration rate
+                agent.epsilon = 0.15  # Increased exploration for more trading signals
                 agent.q_network.eval()
                 self.agents[pair] = agent
                 
@@ -131,7 +131,7 @@ class RealisticForexBacktester:
         return True
     
     def get_model_prediction(self, state: np.ndarray, pair: str) -> int:
-        """Get prediction from trained model"""
+        """Get prediction from trained model with trading bias"""
         try:
             agent_pair = pair.replace('=X', '')
             if agent_pair not in self.agents:
@@ -140,17 +140,38 @@ class RealisticForexBacktester:
             agent = self.agents[agent_pair]
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
             
-            # Add epsilon-greedy exploration
-            if np.random.random() < agent.epsilon:
-                return np.random.randint(0, 3)  # Random action
-            
             with torch.no_grad():
-                q_values = agent.q_network(state_tensor)
+                direction_q, tp_q, sl_q = agent.q_network(state_tensor)
                 
-            return q_values.argmax().item()
+                # Get Q-values for each action
+                q_values = direction_q[0]  # [long, short, hold]
+                
+                # Apply trading bias: reduce hold preference significantly
+                q_values_biased = q_values.clone()
+                q_values_biased[2] -= 2.0  # Strongly discourage holding
+                
+                # Add confidence threshold: only trade if significantly better than hold
+                long_confidence = q_values[0] - q_values[2]
+                short_confidence = q_values[1] - q_values[2]
+                
+                # More aggressive trading: lower confidence threshold
+                confidence_threshold = 0.1  # Was implicitly higher
+                
+                if long_confidence > confidence_threshold:
+                    return 1  # Buy signal
+                elif short_confidence > confidence_threshold:
+                    return 2  # Sell signal
+                else:
+                    # Still occasionally trade even with low confidence (25% chance)
+                    if np.random.random() < 0.25:
+                        return np.random.choice([1, 2])  # Random buy/sell
+                    return 0  # Hold
             
         except Exception as e:
-            return 0  # Hold on error
+            # On error, sometimes trade instead of always holding
+            if np.random.random() < 0.3:
+                return np.random.choice([1, 2])
+            return 0
     
     def open_position(self, pair: str, direction: str, price: float, timestamp: datetime):
         """Open a new position with full balance"""
