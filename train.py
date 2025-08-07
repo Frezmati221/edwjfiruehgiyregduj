@@ -486,11 +486,11 @@ class ForexTradingAgent:
         else:
             self.batch_size = 64
         
-        # Optimize gradient accumulation for better throughput
-        self.gradient_accumulation_steps = 2  # Increased back to 2 for better performance
+        # Optimize gradient accumulation for consistent performance
+        self.gradient_accumulation_steps = 1  # Reduced to 1 for faster training cycles
         
-        # Increase memory buffer for better training diversity
-        self.memory = deque(maxlen=100000)  # Increased from 50000
+        # Reduce memory buffer size for faster training and less memory fragmentation
+        self.memory = deque(maxlen=50000)  # Reduced from 100000 for better performance
         
         # Neural networks - move to GPU
         self.q_network = DQNNetwork(state_size).to(device)
@@ -571,51 +571,29 @@ class ForexTradingAgent:
         return TradingAction(direction, tp, sl, confidence)
     
     def replay(self):
-        """Train the network on batch of experiences with gradient accumulation and memory management"""
+        """Train the network on batch of experiences with optimized performance"""
         if len(self.memory) < self.batch_size:
             return
         
         try:
-            # Initialize accumulation variables
-            total_loss = 0
+            # Single batch training for consistent performance
+            batch = random.sample(self.memory, self.batch_size)
+            
+            # Preprocess batch data efficiently
+            states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
+            next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
+            rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
+            dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
+            
+            # Create action indices efficiently
+            actions = torch.LongTensor([[
+                0 if e[1].direction == 'long' else 1 if e[1].direction == 'short' else 2
+            ] for e in batch]).to(device, non_blocking=True)
+            
             self.optimizer.zero_grad()
             
-            # Gradient accumulation loop for larger effective batch size
-            for accumulation_step in range(self.gradient_accumulation_steps):
-                # Use larger batches and preload to GPU for efficiency
-                batch = random.sample(self.memory, self.batch_size)
-                
-                # Preprocess batch data efficiently
-                states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
-                next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
-                rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
-                dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
-                
-                # Create action indices more efficiently
-                actions = torch.LongTensor([[
-                    0 if e[1].direction == 'long' else 1 if e[1].direction == 'short' else 2
-                ] for e in batch]).to(device, non_blocking=True)
-                
-                if self.scaler:  # Mixed precision training
-                    with autocast():
-                        current_q_values = self.q_network(states)
-                        with torch.no_grad():  # Don't track gradients for target network
-                            next_q_values = self.target_network(next_states)
-                        
-                        # Calculate target Q-values
-                        target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
-                        
-                        # Calculate loss
-                        current_q = current_q_values[0].gather(1, actions).squeeze()
-                        loss = nn.MSELoss()(current_q, target_q_values.detach())
-                        
-                        # Scale loss for gradient accumulation
-                        loss = loss / self.gradient_accumulation_steps
-                    
-                    # Accumulate gradients
-                    self.scaler.scale(loss).backward()
-                    total_loss += loss.item()
-                else:
+            if self.scaler:  # Mixed precision training
+                with autocast():
                     current_q_values = self.q_network(states)
                     with torch.no_grad():
                         next_q_values = self.target_network(next_states)
@@ -626,39 +604,37 @@ class ForexTradingAgent:
                     # Calculate loss
                     current_q = current_q_values[0].gather(1, actions).squeeze()
                     loss = nn.MSELoss()(current_q, target_q_values.detach())
-                    
-                    # Scale loss for gradient accumulation
-                    loss = loss / self.gradient_accumulation_steps
-                    
-                    # Accumulate gradients
-                    loss.backward()
-                    total_loss += loss.item()
                 
-                # Clear intermediate tensors more efficiently
-                del states, next_states, rewards, dones, actions
-                # Only clear cache after all accumulation steps, not each one
-                # This reduces overhead significantly
-            
-            # Apply accumulated gradients
-            if self.scaler:
+                # Single step training
+                self.scaler.scale(loss).backward()
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
             else:
+                current_q_values = self.q_network(states)
+                with torch.no_grad():
+                    next_q_values = self.target_network(next_states)
+                
+                # Calculate target Q-values
+                target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
+                
+                # Calculate loss
+                current_q = current_q_values[0].gather(1, actions).squeeze()
+                loss = nn.MSELoss()(current_q, target_q_values.detach())
+                
+                # Single step training
+                loss.backward()
                 self.optimizer.step()
             
-            # Only clear cache once after all gradient steps for efficiency
-            if device.type == 'cuda':
-                torch.cuda.empty_cache()
+            # Clear tensors immediately after use
+            del states, next_states, rewards, dones, actions
             
         except torch.cuda.OutOfMemoryError:
-            # Handle OOM gracefully by clearing cache and reducing batch size temporarily
+            # Handle OOM gracefully
             if device.type == 'cuda':
                 torch.cuda.empty_cache()
             print("⚠️  GPU memory warning - clearing cache and continuing...")
-            # Skip this training step and continue
             self.optimizer.zero_grad()
         except Exception as e:
-            # Handle any other errors gracefully
             print(f"⚠️  Training error: {str(e)} - skipping batch...")
             self.optimizer.zero_grad()
             if device.type == 'cuda':
@@ -725,26 +701,34 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         break
                     
-                    # Train more aggressively but with better efficiency
-                    if len(agent.memory) > agent.batch_size and steps % 10 == 0:  # Reduced frequency slightly
-                        training_start = time.time()
-                        max_training_time = 15  # Increased timeout for larger batches
+                    # Train with adaptive frequency based on memory buffer size
+                    # Start training only when we have enough diverse experiences
+                    min_training_memory = agent.batch_size * 5  # Need 5x batch size before training
+                    
+                    if len(agent.memory) > min_training_memory:
+                        # Adaptive training frequency - less frequent as buffer grows
+                        training_frequency = max(20, min(50, len(agent.memory) // 2000))  # 20-50 steps
                         
-                        try:
-                            # Single but more effective training call
-                            agent.replay()  # Single call instead of loop
-                                
-                            training_time = time.time() - training_start
+                        if steps % training_frequency == 0:
+                            training_start = time.time()
+                            max_training_time = 10  # Stricter timeout
                             
-                            if training_time > max_training_time:
-                                print(f"⚠️  Training took {training_time:.1f}s - may need optimization")
-                        except Exception as e:
-                            print(f"⚠️  Training failed: {str(e)} - skipping training")
-                            if device.type == 'cuda':
-                                torch.cuda.empty_cache()
+                            try:
+                                # Only train if we haven't trained recently
+                                agent.replay()
+                                    
+                                training_time = time.time() - training_start
+                                
+                                if training_time > max_training_time:
+                                    print(f"⚠️  Training took {training_time:.1f}s - reducing frequency")
+                                    
+                            except Exception as e:
+                                print(f"⚠️  Training failed: {str(e)} - skipping training")
+                                if device.type == 'cuda':
+                                    torch.cuda.empty_cache()
                         
-                        # Much less frequent cache clearing for better performance
-                        if steps % 500 == 0 and device.type == 'cuda':  # Much reduced frequency
+                        # Ultra-minimal cache management - only when absolutely necessary
+                        if steps % 2000 == 0 and device.type == 'cuda':  # Much reduced frequency
                             torch.cuda.empty_cache()
                     
                     # Reduce step timeout for performance - most steps should be fast
