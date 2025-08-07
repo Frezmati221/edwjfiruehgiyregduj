@@ -419,6 +419,10 @@ class ForexEnvironment:
             reward -= 50  # Much more conservative penalty
             done = True
         
+        # Small bonus for maintaining good balance (encourage good behavior)
+        if self.balance > self.initial_balance * 1.1:  # 10% profit
+            reward += 5  # Small bonus for profitability
+        
         return self._get_state(), reward, done
 
 class DQNNetwork(nn.Module):
@@ -747,8 +751,8 @@ class ForexPredictor:
                             max_training_time = 5  # Shorter timeout to prevent slowdowns
                             
                             try:
-                                # ALWAYS train to enable learning - more conservative approach
-                                if total_reward > -2000:  # Much more lenient threshold
+                                # ALWAYS train to enable learning (only skip in extreme cases)
+                                if total_reward > -5000:  # Much more lenient threshold - allow learning
                                     agent.replay()
                                     # Epsilon decay happens after successful training
                                     if agent.epsilon > agent.epsilon_min:
@@ -791,7 +795,17 @@ class ForexPredictor:
                     # Progress monitoring with performance tracking
                     if steps % 200 == 0:  # Every 200 steps
                         elapsed = time.time() - last_step_time
-                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 200 steps: {elapsed:.1f}s, ε: {agent.epsilon:.3f}")
+                        performance_emoji = "📊"
+                        if total_reward > 0:
+                            performance_emoji = "🟢"  # Green for positive
+                        elif total_reward > -500:
+                            performance_emoji = "🟡"  # Yellow for decent
+                        elif total_reward > -1500:
+                            performance_emoji = "🟠"  # Orange for poor
+                        else:
+                            performance_emoji = "🔴"  # Red for very poor
+                        
+                        print(f"    {performance_emoji} Step {steps}, Reward: {total_reward:.1f}, Last 200 steps: {elapsed:.1f}s, ε: {agent.epsilon:.3f}")
                         last_step_time = time.time()
                         
                         # Check for performance degradation
