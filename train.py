@@ -381,16 +381,16 @@ class ForexEnvironment:
             position_size = risk_amount / (20 * pip_value)  # 20-pip stop loss
             actual_profit = profit * position_size
             
-            # Apply realistic stop loss/take profit (20/40 pips for 2:1 ratio)
+            # Apply realistic stop loss/take profit with improved reward structure
             if pips_gained <= -20:  # Stop loss hit
                 actual_profit = -risk_amount  # Lose exactly 2% of balance
-                reward = -100  # Reduced penalty to prevent negative spiral
+                reward = -50  # Further reduced penalty to prevent spiraling
             elif pips_gained >= 40:  # Take profit hit (2:1 ratio)
                 actual_profit = risk_amount * 2  # Gain 4% of balance (2:1 ratio)
-                reward = 200  # Balanced reward for correct direction prediction
+                reward = 100  # Balanced reward for correct direction prediction
             else:
-                # Regular profit/loss - emphasize direction accuracy but prevent extreme negatives
-                reward = max(-50, min(50, pips_gained * 2))  # Clamped rewards
+                # Regular profit/loss - more conservative rewards to prevent extremes
+                reward = max(-25, min(25, pips_gained * 1))  # Much more conservative clamping
             
             self.balance += actual_profit
             self.position = None
@@ -399,7 +399,7 @@ class ForexEnvironment:
         if action.direction != 'hold':
             # Prevent trading if balance too low (realistic risk management)
             if self.balance < 100:  # Minimum $100 to trade
-                reward -= 10  # Reduced penalty to prevent spiral
+                reward -= 5  # Further reduced penalty to prevent spiral
             else:
                 self.position = action.direction
                 self.entry_price = current_price
@@ -414,9 +414,9 @@ class ForexEnvironment:
         self.current_step += 1
         done = self.current_step >= self.max_steps
         
-        # Additional penalty if balance goes negative (margin call simulation)
+        # More conservative penalty for negative balance (prevent extreme spiraling)
         if self.balance <= 0:
-            reward -= 200  # Reduced penalty to prevent extreme negatives
+            reward -= 50  # Much more conservative penalty
             done = True
         
         return self._get_state(), reward, done
@@ -467,8 +467,8 @@ class ForexTradingAgent:
     def __init__(self, state_size: int, learning_rate: float = 0.001):
         self.state_size = state_size
         self.epsilon = 1.0
-        self.epsilon_min = 0.01
-        self.epsilon_decay = 0.995
+        self.epsilon_min = 0.05  # Higher minimum to maintain exploration
+        self.epsilon_decay = 0.998  # Slower decay for more stable learning
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
@@ -731,71 +731,92 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         break
                     
-                    # Optimize training for maximum prediction accuracy
-                    # Train more frequently when we have sufficient data for better learning
-                    min_training_memory = agent.batch_size * 2  # Reduced minimum for faster training start
+                    # Optimize training for better stability and performance
+                    # More conservative training approach to prevent negative spirals
+                    min_training_memory = agent.batch_size * 4  # Larger buffer for more stable learning
                     
                     if len(agent.memory) > min_training_memory:
-                        # Balanced training frequency for stable learning
-                        training_frequency = 10  # Train every 10 steps for balanced performance
+                        # More conservative training frequency for stability
+                        training_frequency = 25  # Train every 25 steps for more stable learning
                         
                         if steps % training_frequency == 0:
                             training_start = time.time()
-                            max_training_time = 8  # Reduced timeout for better flow
+                            max_training_time = 5  # Shorter timeout to prevent slowdowns
                             
                             try:
-                                # Single training iteration for better flow
-                                agent.replay()
+                                # Only train if recent performance isn't terrible
+                                if total_reward > -1000:  # Don't train when performance is very poor
+                                    agent.replay()
+                                else:
+                                    print(f"    🚫 Skipping training due to poor performance (reward: {total_reward:.1f})")
                                     
                                 training_time = time.time() - training_start
                                 
                                 if training_time > max_training_time:
-                                    print(f"⚠️  Training took {training_time:.1f}s - optimizing...")
-                                    # Clear cache after slow training
+                                    print(f"⚠️  Training took {training_time:.1f}s - clearing cache...")
                                     if device.type == 'cuda':
                                         torch.cuda.empty_cache()
+                                        torch.cuda.synchronize()
                                     
                             except Exception as e:
-                                print(f"⚠️  Training failed: {str(e)} - skipping training")
+                                print(f"⚠️  Training failed: {str(e)} - clearing cache and continuing")
                                 if device.type == 'cuda':
                                     torch.cuda.empty_cache()
                         
-                        # Less frequent cache management for stable performance
-                        if steps % 5000 == 0 and device.type == 'cuda':  # Much less frequent clearing
+                        # More frequent cache management to prevent memory buildup
+                        if steps % 1000 == 0 and device.type == 'cuda':  # More frequent clearing
                             torch.cuda.empty_cache()
+                            torch.cuda.synchronize()
                     
-                    # Reduce step timeout for performance - most steps should be fast
+                    # More aggressive step timeout to catch issues early
                     step_time = time.time() - step_start_time
-                    if step_time > 5:  # Reduced from 10 to 5 seconds
-                        print(f"⚠️  Step {steps} took {step_time:.1f}s - potential performance issue")
+                    if step_time > 3:  # Reduced from 5 to 3 seconds
+                        print(f"⚠️  Step {steps} took {step_time:.1f}s - clearing cache...")
                         if device.type == 'cuda':
                             torch.cuda.empty_cache()
                         # Don't break - just warn and continue
                     
-                    # Even less frequent progress monitoring for maximum performance
-                    if steps % 200 == 0:  # Reduced to every 200 steps
+                    # Progress monitoring with performance tracking
+                    if steps % 200 == 0:  # Every 200 steps
                         elapsed = time.time() - last_step_time
-                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 200 steps: {elapsed:.1f}s")
+                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 200 steps: {elapsed:.1f}s, ε: {agent.epsilon:.3f}")
                         last_step_time = time.time()
                         
-                        # Minimal cache management for performance
-                        if device.type == 'cuda' and steps % 5000 == 0:  # Much less frequent
-                            torch.cuda.synchronize()
+                        # Check for performance degradation
+                        if elapsed > 10:  # If 200 steps take more than 10 seconds
+                            print(f"    ⚠️  Performance degradation detected - clearing memory and resetting")
+                            if device.type == 'cuda':
+                                torch.cuda.empty_cache()
+                                torch.cuda.synchronize()
+                            # Increase exploration to break out of bad patterns
+                            agent.epsilon = min(0.5, agent.epsilon + 0.1)
+                        
+                        # Regular cache management
+                        if device.type == 'cuda' and steps % 2000 == 0:  # More frequent cache clearing
+                            torch.cuda.empty_cache()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
                     agent.update_target_network()
                 
-                # Early stopping if rewards get too negative (prevent spiraling)
-                if total_reward < -3000:  # More proactive early stopping
+                # Improved early stopping with complete reset (prevent spiraling)
+                if total_reward < -1500:  # Much more aggressive early stopping
                     print(f"\n⚠️  Early stopping due to poor performance (reward: {total_reward:.1f})")
-                    print("    🔄 Resetting environment and continuing...")
-                    # Reset the environment balance to prevent permanent damage
+                    print("    🔄 Complete environment and agent reset...")
+                    # Complete reset to prevent cascading failures
                     env.balance = env.initial_balance
-                    total_reward = max(total_reward, -500)  # Cap the negative reward more aggressively
-                    # Clear GPU cache after reset
+                    env.position = None
+                    env.current_step = env.lookback_period
+                    # Reset agent exploration to add more randomness
+                    agent.epsilon = min(0.4, agent.epsilon + 0.2)
+                    total_reward = 0  # Complete reset instead of partial cap
+                    state = env.reset()  # Get fresh state
+                    print(f"    ✅ Complete reset done, epsilon increased to {agent.epsilon:.3f}")
+                    # Clear memory issues
                     if device.type == 'cuda':
                         torch.cuda.empty_cache()
+                        torch.cuda.synchronize()
+                    break  # Exit episode early
                 
                 # Track performance
                 rewards_history.append(total_reward)
