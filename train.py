@@ -983,7 +983,7 @@ def create_sample_data() -> Dict[str, pd.DataFrame]:
 class ForexEnvironment:
     """Production-grade trading environment with comprehensive safety features"""
     
-    def __init__(self, data: pd.DataFrame, pair_name: str = 'EURUSD', lookback_period: int = 30):
+    def __init__(self, data: pd.DataFrame, pair_name: str = 'EURUSD', lookback_period: int = 10):  # Much shorter lookback
         self.data = data
         self.pair_name = pair_name
         self.lookback_period = lookback_period
@@ -1007,8 +1007,8 @@ class ForexEnvironment:
         self.trade_count = 0
         self.winning_trades = 0
         
-        # Market conditions
-        self.market_conditions = None
+        # Market conditions - simplified for basic training
+        self.market_conditions = MarketConditions('ranging', 0.5, 0.0, 1.0, 1.1)
         
         # Enhanced tracking
         self.execution_details_history = []
@@ -1050,102 +1050,140 @@ class ForexEnvironment:
         self.drawdown_series = []
         self.trade_count = 0
         self.winning_trades = 0
+        
+        # ACTION DIVERSITY TRACKING to prevent convergence
+        self.recent_actions = deque(maxlen=20)  # Track last 20 actions
+        self.action_counts = {'long': 0, 'short': 0, 'hold': 0}  # Total counts
         self.risk_manager = RiskManager()
         return self._get_state()
     
     def _get_state(self):
-        """Get current state including lookback window and market conditions"""
-        lookback_data = self.data.iloc[
-            self.current_step - self.lookback_period:self.current_step
-        ]
-        
-        # Update market conditions
-        self.market_conditions = self.indicators.detect_market_regime(lookback_data)
-        
-        # Create a FIXED-SIZE feature vector to ensure consistent neural network input
-        # This is critical for production systems to avoid dimension mismatch errors
-        
-        feature_vectors = []
-        
-        # 1. Basic OHLCV features (5 * 30 = 150 features)
-        price_features = ['open', 'high', 'low', 'close', 'volume']
-        for col in price_features:
-            if col in lookback_data.columns:
-                values = lookback_data[col].values
-                if len(values) == self.lookback_period:
-                    # Normalize and ensure exact length
-                    normalized = (values - np.nanmean(values)) / (np.nanstd(values) + 1e-8)
-                    normalized = np.nan_to_num(normalized, nan=0.0)
-                    feature_vectors.extend(normalized)
-                else:
-                    # Pad with zeros if missing data
-                    feature_vectors.extend([0.0] * self.lookback_period)
-            else:
-                # Add zeros if column missing
-                feature_vectors.extend([0.0] * self.lookback_period)
-        
-        # 2. Technical indicators - last 5 values each (simplified for consistency)
-        indicator_cols = ['sma_10', 'sma_20', 'ema_12', 'ema_26', 'rsi', 'atr', 'macd', 'macd_signal']
-        for col in indicator_cols:
-            if col in lookback_data.columns and not lookback_data[col].isna().all():
-                values = lookback_data[col].dropna().values
-                if len(values) >= 5:
-                    last_values = values[-5:]
-                    normalized = (last_values - np.nanmean(last_values)) / (np.nanstd(last_values) + 1e-8)
-                    normalized = np.nan_to_num(normalized, nan=0.0)
-                    feature_vectors.extend(normalized)
-                else:
-                    feature_vectors.extend([0.0] * 5)
-            else:
-                feature_vectors.extend([0.0] * 5)
-        
-        # 3. Market regime features (6 features)
-        regime_features = self._encode_market_regime()
-        feature_vectors.extend(regime_features)
-        
-        # 4. Additional market context (10 features)
-        if len(lookback_data) > 0:
-            recent_volatility = lookback_data['volatility'].iloc[-5:].mean() if 'volatility' in lookback_data.columns else 0.0
-            price_range = (lookback_data['high'].max() - lookback_data['low'].min()) / lookback_data['close'].iloc[-1] if len(lookback_data) > 0 else 0.0
-            volume_trend = lookback_data['volume'].iloc[-5:].mean() / lookback_data['volume'].mean() if 'volume' in lookback_data.columns else 1.0
+        """Enhanced but simple state: price movements + basic indicators"""
+        try:
+            lookback = 50  # Need more data for indicators
+            if self.current_step < lookback:
+                # For early steps, return zeros
+                return np.zeros(30, dtype=np.float32)
             
-            additional_features = [
-                recent_volatility, price_range, volume_trend,
-                0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0  # Padding to make exactly 10
-            ]
-            feature_vectors.extend(additional_features)
-        else:
-            feature_vectors.extend([0.0] * 10)
-        
-        # Ensure EXACTLY the expected size: 5*30 + 8*5 + 6 + 10 = 150 + 40 + 6 + 10 = 206
-        expected_size = 206
-        current_size = len(feature_vectors)
-        
-        if current_size < expected_size:
-            # Pad with zeros
-            feature_vectors.extend([0.0] * (expected_size - current_size))
-        elif current_size > expected_size:
-            # Truncate
-            feature_vectors = feature_vectors[:expected_size]
-        
-        # Convert to numpy array
-        state_vector = np.array(feature_vectors, dtype=np.float32)
-        
-        # Final safety check
-        state_vector = np.nan_to_num(state_vector, nan=0.0, posinf=1.0, neginf=-1.0)
-        
-        # Debug: Verify size consistency
-        if len(state_vector) != expected_size:
-            print(f"⚠️ DEBUG: State vector size {len(state_vector)} != expected {expected_size} for {self.pair_name}")
-            print(f"   Current size breakdown: OHLCV({5*self.lookback_period}) + Indicators({8*5}) + Regime(6) + Additional(10)")
-            print(f"   Lookback period: {self.lookback_period}")
-            # Force correct size
-            if len(state_vector) < expected_size:
-                state_vector = np.pad(state_vector, (0, expected_size - len(state_vector)), 'constant')
+            # Get enough data for indicators
+            start_idx = max(0, self.current_step - lookback)
+            end_idx = self.current_step + 1
+            recent_data = self.data.iloc[start_idx:end_idx]
+            
+            if len(recent_data) < lookback:
+                return np.zeros(30, dtype=np.float32)
+            
+            # Get OHLC data
+            high = recent_data['high'].values
+            low = recent_data['low'].values
+            close = recent_data['close'].values
+            volume = recent_data.get('volume', np.ones(len(close))).values
+            
+            features = []
+            
+            # 1. Last 10 price changes (scaled)
+            for i in range(1, 11):
+                if close[-i-1] != 0:
+                    price_change = (close[-i] - close[-i-1]) / close[-i-1]
+                    features.append(np.clip(price_change * 10000, -10, 10))
+                else:
+                    features.append(0.0)
+            
+            # 2. Simple Moving Averages (3 values)
+            sma_5 = np.mean(close[-5:])
+            sma_10 = np.mean(close[-10:])
+            sma_20 = np.mean(close[-20:])
+            
+            current_price = close[-1]
+            if current_price > 0:
+                features.extend([
+                    np.clip((current_price - sma_5) / current_price * 1000, -5, 5),
+                    np.clip((current_price - sma_10) / current_price * 1000, -5, 5), 
+                    np.clip((current_price - sma_20) / current_price * 1000, -5, 5)
+                ])
             else:
-                state_vector = state_vector[:expected_size]
-        
-        return state_vector
+                features.extend([0.0, 0.0, 0.0])
+            
+            # 3. RSI-like momentum (1 value)
+            if len(close) >= 14:
+                gains = []
+                losses = []
+                for i in range(1, 14):
+                    change = close[-i] - close[-i-1]
+                    if change > 0:
+                        gains.append(change)
+                        losses.append(0)
+                    else:
+                        gains.append(0)
+                        losses.append(abs(change))
+                
+                avg_gain = np.mean(gains) if gains else 0
+                avg_loss = np.mean(losses) if losses else 0
+                
+                if avg_loss > 0:
+                    rs = avg_gain / avg_loss
+                    rsi = 100 - (100 / (1 + rs))
+                    features.append(np.clip((rsi - 50) / 10, -5, 5))  # Normalize around 50
+                else:
+                    features.append(0.0)
+            else:
+                features.append(0.0)
+            
+            # 4. Volatility (1 value)
+            if len(close) >= 10:
+                returns = []
+                for i in range(1, 10):
+                    if close[-i-1] != 0:
+                        returns.append((close[-i] - close[-i-1]) / close[-i-1])
+                
+                if returns:
+                    volatility = np.std(returns)
+                    features.append(np.clip(volatility * 1000, 0, 10))
+                else:
+                    features.append(0.0)
+            else:
+                features.append(0.0)
+            
+            # 5. Trend strength (5 values - last 5 candle directions)
+            for i in range(1, 6):
+                if close[-i-1] != 0:
+                    direction = 1 if close[-i] > close[-i-1] else -1
+                    features.append(direction)
+                else:
+                    features.append(0)
+            
+            # 6. High/Low positions (10 values - where price is relative to recent high/low)
+            if len(close) >= 10:
+                for period in [3, 5, 10]:
+                    period_high = np.max(high[-period:])
+                    period_low = np.min(low[-period:])
+                    
+                    if period_high > period_low:
+                        # Position within the range (0 = at low, 1 = at high)
+                        position = (current_price - period_low) / (period_high - period_low)
+                        features.append(np.clip(position * 2 - 1, -1, 1))  # Scale to [-1, 1]
+                    else:
+                        features.append(0.0)
+            else:
+                features.extend([0.0, 0.0, 0.0])
+            
+            # Ensure we have exactly 30 features: 10+3+1+1+5+3 = 23, add 7 zeros if needed
+            while len(features) < 30:
+                features.append(0.0)
+            
+            features = features[:30]  # Ensure exactly 30
+            
+            # Convert to numpy array
+            state = np.array(features, dtype=np.float32)
+            
+            # Replace any NaN or inf values
+            state = np.nan_to_num(state, nan=0.0, posinf=0.0, neginf=0.0)
+            
+            return state
+            
+        except Exception as e:
+            print(f"Error in _get_state: {e}")
+            return np.zeros(30, dtype=np.float32)
     
     def _encode_market_regime(self) -> np.ndarray:
         """Encode market regime as features"""
@@ -1196,18 +1234,17 @@ class ForexEnvironment:
         )
         
         if not safety_passed:
-            # Record safety violation
+            # Record safety violation but no penalty during training
             self.safety_violations.append({
                 'step': self.current_step,
                 'violations': [r[1] for r in safety_results if r[0] == 'FAIL']
             })
-            reward -= 0.1  # Tiny penalty for safety violations
         
         # Calculate position size for this trade
         position_size = self.calculate_position_size(
             current_price, 
             action.stop_loss,
-            risk_percent=0.01 if self.market_conditions.regime == 'high_volatility' else 0.02
+            risk_percent=0.02  # Fixed 2% risk
         )
         
         # Check if risk manager allows trading
@@ -1215,10 +1252,9 @@ class ForexEnvironment:
             self.balance, self.pair_name, action.direction, position_size, current_price
         )
         
-        # Check margin requirements
+        # Check margin requirements  
         margin_call, margin_message = self.risk_manager.check_margin_call(self.balance)
         if margin_call:
-            reward -= 0.5  # Tiny penalty for margin issues
             self.safety_violations.append({
                 'step': self.current_step,
                 'violations': [margin_message]
@@ -1250,26 +1286,25 @@ class ForexEnvironment:
             # Simplified profit calculation - much lower costs for training
             trading_cost = position_size * 0.0001  # 0.01% trading cost (much lower than reality)
             
-            # FIXED: Much smaller rewards based on actual performance
+            # SUPER SIMPLE: Just reward correct direction prediction
             if pips_gained <= -action.stop_loss:  # Stop loss hit
                 actual_profit = -action.stop_loss * pip_value_usd - trading_cost
-                reward = -2  # Small fixed penalty for stop loss
+                reward = -1  # Wrong direction
                 
             elif pips_gained >= action.take_profit:  # Take profit hit
                 actual_profit = action.take_profit * pip_value_usd - trading_cost
-                reward = +3  # Small fixed reward for take profit
+                reward = +1  # Correct direction
                 self.winning_trades += 1
                 
             else:
-                # Regular exit - calculate actual profit
+                # Regular exit - just check if we made money
                 actual_profit = pips_gained * pip_value_usd - trading_cost
                 
-                # Small rewards based on prediction accuracy
                 if actual_profit > 0:
-                    reward = +1  # Small reward for winning trade
+                    reward = +1  # Correct prediction
                     self.winning_trades += 1
                 else:
-                    reward = -1  # Small penalty for losing trade
+                    reward = -1  # Wrong prediction
             
             self.balance += actual_profit
             self.trade_count += 1
@@ -1328,6 +1363,25 @@ class ForexEnvironment:
                     self.position = action.direction
                     self.entry_price = current_price
                     
+                    # Track action for diversity
+                    self.recent_actions.append(action.direction)
+                    self.action_counts[action.direction] += 1
+                    
+                    # DIVERSITY BONUS to prevent convergence to single strategy
+                    recent_diversity = len(set(list(self.recent_actions)))
+                    if recent_diversity >= 3:  # All three action types in recent history
+                        reward += 0.2  # Bonus for diversity
+                    elif recent_diversity >= 2:  # At least two different actions
+                        reward += 0.1  # Small bonus for some diversity
+                    
+                    # ANTI-CONVERGENCE: Penalize if one action becomes too dominant
+                    total_actions = sum(self.action_counts.values())
+                    if total_actions > 20:  # After enough actions
+                        max_ratio = max(self.action_counts.values()) / total_actions
+                        if max_ratio > 0.8:  # More than 80% of one action type
+                            reward -= 0.3  # Penalty for convergence
+                            print(f" 🚨CONVERGENCE PENALTY🚨", end='', flush=True)
+                    
                     # MINIMAL reward for taking action - focus on quality
                     reward += 0.1  # Very tiny reward for taking action
                     
@@ -1360,6 +1414,10 @@ class ForexEnvironment:
                 print(f"\r🚫 TRADE BLOCKED (Extreme): {action.direction} - {block_reason}", end='', flush=True)
         else:
             # Allow some holding - don't force trades constantly
+            # Track hold action for diversity
+            self.recent_actions.append('hold')
+            self.action_counts['hold'] += 1
+            
             reward = 0  # Neutral for holding
             print(f"\r⏸️  HOLD POSITION", end='', flush=True)
         
@@ -1379,24 +1437,26 @@ class ForexEnvironment:
         self.current_step += 1
         done = self.current_step >= self.max_steps
         
-        # STRONG FINAL PERFORMANCE PENALTY when episode ends
+        # BALANCED FINAL PERFORMANCE REWARD when episode ends
         if done:
-            # Calculate final performance and heavily penalize bad results
+            # Calculate final performance with balanced rewards
             total_return = (self.balance - self.initial_balance) / self.initial_balance
             if self.trade_count > 0:
                 final_win_rate = self.winning_trades / self.trade_count
                 
-                # MASSIVE penalty for ending with terrible performance
-                if final_win_rate < 0.3 and total_return < -0.5:  # <30% win rate AND lost >50%
-                    reward -= 100  # Huge penalty
-                elif final_win_rate < 0.4 and total_return < -0.2:  # <40% win rate AND lost >20%
-                    reward -= 50   # Large penalty
-                elif final_win_rate < 0.5:  # <50% win rate
-                    reward -= 20   # Medium penalty
+                # Balanced penalties/rewards for ending performance
+                if final_win_rate < 0.3 and total_return < -0.8:  # Very bad performance
+                    reward -= 10  # Moderate penalty, not massive
+                elif final_win_rate < 0.4 and total_return < -0.5:  # Poor performance
+                    reward -= 5   # Small penalty
+                elif final_win_rate < 0.45:  # Below average
+                    reward -= 2   # Tiny penalty
                 
-                # Reward for ending with good performance
-                if final_win_rate > 0.6 and total_return > 0.1:  # >60% win rate AND profit >10%
-                    reward += 50   # Good reward for actual success
+                # Reward for good performance
+                if final_win_rate > 0.55 and total_return > 0.1:  # Good performance
+                    reward += 5   # Moderate reward for success
+                elif final_win_rate > 0.6 and total_return > 0.2:  # Excellent performance
+                    reward += 10  # Good reward for excellence
         
         # TRAINING MODE: Much more lenient emergency rules
         # Emergency shutdown only in extreme cases
@@ -1411,35 +1471,8 @@ class ForexEnvironment:
         elif drawdown > 0.95:  # Only warn at 95% drawdown
             reward -= 10  # Medium penalty
         
-        # FIXED: Performance-based rewards - negative for bad performance
-        if self.trade_count > 20:  # Need enough trades for meaningful metrics
-            win_rate = self.winning_trades / self.trade_count
-            
-            # Base reward on actual performance - negative for bad results
-            if win_rate >= 0.6:      # 60%+ win rate
-                reward += 2   # Small reward for excellent performance
-            elif win_rate >= 0.5:    # 50-60% win rate  
-                reward += 1   # Small reward for good performance
-            elif win_rate >= 0.4:    # 40-50% win rate
-                reward += 0   # Neutral for decent performance
-            elif win_rate >= 0.3:    # 30-40% win rate
-                reward -= 1   # Penalty for poor performance
-            else:                    # <30% win rate
-                reward -= 5   # Strong penalty for terrible performance
-        
-        # Strong penalty for excessive drawdown
-        if drawdown > 0.9:   # 90%+ drawdown is terrible
-            reward -= 10
-        elif drawdown > 0.8:  # 80%+ drawdown is bad
-            reward -= 5
-        elif drawdown > 0.6:  # 60%+ drawdown is concerning
-            reward -= 2
-        
-        # Additional penalty for losing money overall
-        if self.balance < self.initial_balance * 0.8:  # Lost 20%+ of account
-            reward -= 5
-        elif self.balance < self.initial_balance * 0.5:  # Lost 50%+ of account  
-            reward -= 10
+        # NO MORE CUMULATIVE REWARDS - Only individual trade performance matters
+        # The AI should learn from trade-by-trade feedback, not accumulated bonuses
         
         return self._get_state(), reward, done
     
@@ -1512,30 +1545,34 @@ class ForexEnvironment:
         }
 
 class DQNNetwork(nn.Module):
-    """Simple and fast Deep Q-Network for trading decisions"""
+    """Improved Deep Q-Network for trading decisions"""
     
-    def __init__(self, input_size: int, hidden_size: int = 512):
+    def __init__(self, input_size: int, hidden_size: int = 64):  # Larger network for better learning
         super(DQNNetwork, self).__init__()
         
-        # Deep network architecture
+        # More robust network architecture
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_size, hidden_size * 4),
+            nn.Linear(input_size, hidden_size),  # 30 -> 64
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(hidden_size * 4, hidden_size * 2),
+            nn.Dropout(0.2),  # Add dropout for regularization
+            nn.Linear(hidden_size, hidden_size),  # 64 -> 64
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(hidden_size * 2, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size, hidden_size // 2),
+            nn.Dropout(0.1),
+            nn.Linear(hidden_size, hidden_size // 2),  # 64 -> 32
             nn.ReLU()
         )
         
         # Separate heads for different outputs
-        self.direction_head = nn.Linear(hidden_size // 2, 3)
-        self.tp_head = nn.Linear(hidden_size // 2, 10)
-        self.sl_head = nn.Linear(hidden_size // 2, 10)
+        self.direction_head = nn.Linear(hidden_size // 2, 3)  # 32 -> 3 (long/short/hold)
+        self.tp_head = nn.Linear(hidden_size // 2, 10)        # 32 -> 10 (TP levels)
+        self.sl_head = nn.Linear(hidden_size // 2, 10)        # 32 -> 10 (SL levels)
+        
+        # Better weight initialization
+        for m in self.modules():
+            if isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
         
     def forward(self, x):
         features = self.feature_extractor(x)
@@ -1549,7 +1586,7 @@ class DQNNetwork(nn.Module):
 class ForexTradingAgent:
     """Simple and fast trading agent with DQN"""
     
-    def __init__(self, state_size: int, learning_rate: float = 0.001):
+    def __init__(self, state_size: int, learning_rate: float = 0.001):  # Much lower learning rate for stability
         self.state_size = state_size
         # Memory buffer
         if device.type == 'cuda':
@@ -1563,8 +1600,8 @@ class ForexTradingAgent:
         else:
             self.memory = deque(maxlen=10000)
         self.epsilon = 1.0
-        self.epsilon_min = 0.3  # Higher minimum to encourage more trading
-        self.epsilon_decay = 0.99  # Slower decay to keep exploring longer
+        self.epsilon_min = 0.20  # MUCH HIGHER minimum to prevent convergence!
+        self.epsilon_decay = 0.9995  # MUCH slower decay - keep exploring longer!
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
@@ -1605,16 +1642,16 @@ class ForexTradingAgent:
         self.memory.append((state, action, reward, next_state, done))
     
     def act(self, state: np.ndarray) -> TradingAction:
-        """Choose action using epsilon-greedy policy with EXTREME bias toward trading"""
-        # ULTRA AGGRESSIVE: Force 95% trading actions!
-        if random.random() < 0.95:  # 95% chance to force trading!
-            # Almost always trade - NEVER hold!
-            direction = random.choice(['long', 'short'])  # NO HOLD OPTION!
+        """Choose action using balanced epsilon-greedy policy"""
+        # Balanced exploration/exploitation
+        if random.random() < self.epsilon:
+            # Exploration: Random action with all 3 options
+            direction = random.choice(['long', 'short', 'hold'])
             tp = random.uniform(20, 100)  # pips
             sl = random.uniform(10, 50)   # pips
-            print(f"\r🚀 FORCED TRADE: {direction} (TP:{tp:.0f}, SL:{sl:.0f})", end='', flush=True)
+            print(f"\r🚀 EXPLORE (ε={self.epsilon:.2f}): {direction} (TP:{tp:.0f}, SL:{sl:.0f})", end='', flush=True)
         else:
-            # Only 5% chance to use network prediction
+            # Exploitation: Use network prediction
             state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device, non_blocking=True)
             with torch.no_grad():
                 direction_q, tp_q, sl_q = self.q_network(state_tensor)
@@ -1622,17 +1659,13 @@ class ForexTradingAgent:
             direction_idx = torch.argmax(direction_q).item()
             direction = ['long', 'short', 'hold'][direction_idx]
             
-            # EVEN IF NETWORK SAYS HOLD, FORCE TRADE!
-            if direction == 'hold':
-                direction = random.choice(['long', 'short'])
-                print(f"\r🔄 NETWORK WANTED HOLD - FORCING {direction}!", end='', flush=True)
-            
+            # Get TP/SL from network
             tp_idx = torch.argmax(tp_q).item()
             sl_idx = torch.argmax(sl_q).item()
-            
             tp = 20 + tp_idx * 10  # 20-120 pips
             sl = 10 + sl_idx * 5   # 10-60 pips
-            print(f"\r🧠 NETWORK TRADE: {direction} (TP:{tp:.0f}, SL:{sl:.0f})", end='', flush=True)
+            
+            print(f"\r🧠 EXPLOIT (ε={self.epsilon:.2f}): {direction} (TP:{tp:.0f}, SL:{sl:.0f})", end='', flush=True)
         
         confidence = 1.0 - self.epsilon
         return TradingAction(direction, tp, sl, confidence)
@@ -1691,6 +1724,15 @@ class ForexTradingAgent:
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
+        
+        # ANTI-CONVERGENCE: Boost epsilon if actions become too repetitive
+        if hasattr(self, 'action_counts') and len(self.memory) > 1000:
+            total_actions = sum(self.action_counts.values())
+            if total_actions > 50:  # After enough actions
+                max_ratio = max(self.action_counts.values()) / total_actions
+                if max_ratio > 0.85 and self.epsilon < 0.3:  # Very high bias, low exploration
+                    self.epsilon = min(0.4, self.epsilon * 1.5)  # Boost exploration
+                    print(f" 🔄EPSILON BOOST to {self.epsilon:.2f}🔄", end='', flush=True)
     
     def save_model(self, filepath: str):
         """Save the trained model"""
