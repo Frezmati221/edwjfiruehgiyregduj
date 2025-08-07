@@ -489,8 +489,8 @@ class ForexTradingAgent:
         # Optimize gradient accumulation for balanced learning
         self.gradient_accumulation_steps = 2  # Reduced for better flow
         
-        # Balanced memory buffer for good learning and performance
-        self.memory = deque(maxlen=50000)  # Balanced size for good learning
+        # Optimized memory buffer for performance and stability
+        self.memory = deque(maxlen=30000)  # Reduced to prevent memory buildup
         
         # Neural networks - move to GPU
         self.q_network = DQNNetwork(state_size).to(device)
@@ -557,8 +557,8 @@ class ForexTradingAgent:
                 
                 # Clear tensor less frequently for performance
                 del state_tensor
-                # Only clear cache occasionally to avoid performance hit
-                if device.type == 'cuda' and random.random() < 0.1:  # 10% chance
+                # Only clear cache very occasionally to avoid performance hit
+                if device.type == 'cuda' and random.random() < 0.01:  # 1% chance instead of 10%
                     torch.cuda.empty_cache()
                     
             except Exception as e:
@@ -751,14 +751,17 @@ class ForexPredictor:
                                 
                                 if training_time > max_training_time:
                                     print(f"⚠️  Training took {training_time:.1f}s - optimizing...")
+                                    # Clear cache after slow training
+                                    if device.type == 'cuda':
+                                        torch.cuda.empty_cache()
                                     
                             except Exception as e:
                                 print(f"⚠️  Training failed: {str(e)} - skipping training")
                                 if device.type == 'cuda':
                                     torch.cuda.empty_cache()
                         
-                        # More frequent cache management for stable training
-                        if steps % 2000 == 0 and device.type == 'cuda':  # Much reduced frequency
+                        # Less frequent cache management for stable performance
+                        if steps % 5000 == 0 and device.type == 'cuda':  # Much less frequent clearing
                             torch.cuda.empty_cache()
                     
                     # Reduce step timeout for performance - most steps should be fast
@@ -776,7 +779,7 @@ class ForexPredictor:
                         last_step_time = time.time()
                         
                         # Minimal cache management for performance
-                        if device.type == 'cuda' and steps % 1000 == 0:  # Much less frequent
+                        if device.type == 'cuda' and steps % 5000 == 0:  # Much less frequent
                             torch.cuda.synchronize()
                 
                 # Update target network periodically
@@ -784,12 +787,15 @@ class ForexPredictor:
                     agent.update_target_network()
                 
                 # Early stopping if rewards get too negative (prevent spiraling)
-                if total_reward < -5000:
+                if total_reward < -3000:  # More proactive early stopping
                     print(f"\n⚠️  Early stopping due to poor performance (reward: {total_reward:.1f})")
                     print("    🔄 Resetting environment and continuing...")
                     # Reset the environment balance to prevent permanent damage
                     env.balance = env.initial_balance
-                    total_reward = max(total_reward, -1000)  # Cap the negative reward
+                    total_reward = max(total_reward, -500)  # Cap the negative reward more aggressively
+                    # Clear GPU cache after reset
+                    if device.type == 'cuda':
+                        torch.cuda.empty_cache()
                 
                 # Track performance
                 rewards_history.append(total_reward)
