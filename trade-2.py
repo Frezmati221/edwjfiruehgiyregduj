@@ -447,7 +447,10 @@ class SupervisedForexPredictor:
                     train_confident_correct += ((predicted == labels) & high_conf_mask).sum().item()
                     train_confident_total += high_conf_mask.sum().item()
                 
-                pbar.set_postfix({'loss': total_loss.item(), 'conf_avg': confidence.mean().item():.3f})
+                pbar.set_postfix({
+                    'loss': total_loss.item(), 
+                    'conf_avg': f"{confidence.mean().item():.3f}"
+                })
             
             # Validation
             self.model.eval()
