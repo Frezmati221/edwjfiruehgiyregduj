@@ -235,38 +235,54 @@ class SupervisedForexPredictor:
         
         return features_df
     
-    def create_labels(self, df, lookahead=10, min_profit_pips=12):
+    def create_labels(self, df, lookahead=10, min_profit_pips=8):
         """Create labels based on realistic future price movements"""
         
         labels = []
+        long_count = 0
+        short_count = 0
+        hold_count = 0
+        
+        print(f"Creating labels with {min_profit_pips} pip minimum profit requirement...")
         
         for i in range(len(df) - lookahead):
             current_price = df['close'].iloc[i]
-            # Use realistic exit price (close of last candle in lookahead)
+            
+            # Look at future price movements
+            future_highs = df['high'].iloc[i+1:i+lookahead+1].values
+            future_lows = df['low'].iloc[i+1:i+lookahead+1].values
             exit_price = df['close'].iloc[i + lookahead]
             
-            # Calculate actual profit if we held for the full period
-            profit_long = (exit_price - current_price) / self.get_pip_value(current_price)
-            profit_short = (current_price - exit_price) / self.get_pip_value(current_price)
+            # Calculate maximum favorable excursion
+            max_profit_long = (future_highs.max() - current_price) / self.get_pip_value(current_price)
+            max_profit_short = (current_price - future_lows.min()) / self.get_pip_value(current_price)
             
-            # Also check maximum favorable excursion for potential
-            future_prices = df['close'].iloc[i+1:i+lookahead+1].values
-            max_profit_long = (future_prices.max() - current_price) / self.get_pip_value(current_price)
-            max_profit_short = (current_price - future_prices.min()) / self.get_pip_value(current_price)
+            # Calculate actual exit profit
+            exit_profit_long = (exit_price - current_price) / self.get_pip_value(current_price)
+            exit_profit_short = (current_price - exit_price) / self.get_pip_value(current_price)
             
-            # More realistic labeling: must have both potential AND actual profit
-            if (profit_long >= min_profit_pips and max_profit_long >= min_profit_pips * 1.5 and 
-                profit_long > abs(profit_short)):
+            # More permissive labeling - focus on directional accuracy
+            if (max_profit_long >= min_profit_pips and 
+                exit_profit_long > 0 and 
+                max_profit_long > max_profit_short):
                 labels.append(0)  # Long
+                long_count += 1
                 
-            elif (profit_short >= min_profit_pips and max_profit_short >= min_profit_pips * 1.5 and 
-                  profit_short > abs(profit_long)):
+            elif (max_profit_short >= min_profit_pips and 
+                  exit_profit_short > 0 and 
+                  max_profit_short > max_profit_long):
                 labels.append(1)  # Short
+                short_count += 1
             else:
                 labels.append(2)  # Hold
+                hold_count += 1
         
         # Pad the end with hold signals
         labels.extend([2] * lookahead)
+        hold_count += lookahead
+        
+        print(f"Label distribution: Long={long_count}, Short={short_count}, Hold={hold_count}")
+        print(f"Signal rate: {(long_count + short_count) / len(labels) * 100:.1f}%")
         
         return np.array(labels)
     
@@ -303,7 +319,7 @@ class SupervisedForexPredictor:
             features_df = self.create_advanced_features(df)
             
             # Create labels (more realistic requirements)
-            labels = self.create_labels(df, lookahead=10, min_profit_pips=12)
+            labels = self.create_labels(df, lookahead=10, min_profit_pips=8)
             
             # Convert to numpy
             features = features_df.values
@@ -318,33 +334,77 @@ class SupervisedForexPredictor:
         X = np.vstack(all_features)
         y = np.hstack(all_labels)
         
-        # Filter to focus on high-quality patterns (not just "hold")
-        # Keep only samples where we have clear long/short signals
-        mask = y != 2
-        X_filtered = X[mask]
-        y_filtered = y[mask]
+        print(f"Combined data: {len(X)} samples")
+        print(f"Initial class distribution: Long={np.sum(y==0)}, Short={np.sum(y==1)}, Hold={np.sum(y==2)}")
         
-        # Also keep some hold samples for balance
+        # Check if we have any data at all
+        if len(X) == 0:
+            raise ValueError("No training data generated! Check data quality and labeling parameters.")
+        
+        # Keep all data but balance classes better
+        long_mask = y == 0
+        short_mask = y == 1
         hold_mask = y == 2
-        hold_indices = np.where(hold_mask)[0]
-        n_hold_samples = min(len(hold_indices), len(X_filtered) // 2)
-        if n_hold_samples > 0:
-            hold_sample_indices = np.random.choice(hold_indices, n_hold_samples, replace=False)
-            X = np.vstack([X_filtered, X[hold_sample_indices]])
-            y = np.hstack([y_filtered, y[hold_sample_indices]])
-        else:
-            X = X_filtered
-            y = y_filtered
         
-        print(f"Training samples: {len(X)}")
-        print(f"Class distribution: Long={np.sum(y==0)}, Short={np.sum(y==1)}, Hold={np.sum(y==2)}")
+        # Count each class
+        n_long = np.sum(long_mask)
+        n_short = np.sum(short_mask)
+        n_hold = np.sum(hold_mask)
+        
+        # Only proceed if we have some trading signals
+        if n_long + n_short == 0:
+            print("⚠️ No trading signals found! Reducing profit requirements...")
+            # Try with even lower requirements
+            all_features = []
+            all_labels = []
+            
+            for pair, df in data_dict.items():
+                print(f"Re-processing {pair} with lower requirements...")
+                features_df = self.create_advanced_features(df)
+                labels = self.create_labels(df, lookahead=10, min_profit_pips=5)
+                features = features_df.values
+                X_pair, y_pair = self.prepare_sequences(features, labels)
+                all_features.append(X_pair)
+                all_labels.append(y_pair)
+            
+            X = np.vstack(all_features)
+            y = np.hstack(all_labels)
+            
+            if len(X) == 0:
+                raise ValueError("Still no training data! Check your data sources.")
+        
+        # Balance classes - keep all signals but limit holds
+        if n_hold > 0:
+            max_hold_samples = max(n_long + n_short, len(X) // 3)
+            if n_hold > max_hold_samples:
+                hold_indices = np.where(hold_mask)[0]
+                selected_hold = np.random.choice(hold_indices, max_hold_samples, replace=False)
+                
+                # Keep all trading signals + selected holds
+                keep_mask = (y != 2) | np.isin(np.arange(len(y)), selected_hold)
+                X = X[keep_mask]
+                y = y[keep_mask]
+        
+        print(f"Final training samples: {len(X)}")
+        print(f"Final class distribution: Long={np.sum(y==0)}, Short={np.sum(y==1)}, Hold={np.sum(y==2)}")
         
         # Check if we have enough training data
-        if len(X) < 1000:
+        if len(X) < 100:
             print("⚠️ Warning: Very few training samples. Consider:")
-            print("   - Reducing min_profit_pips")
+            print("   - Reducing min_profit_pips further")
             print("   - Increasing data period")
             print("   - Checking data quality")
+            print(f"   - Current data size: {len(X)} samples")
+            
+        if len(X) == 0:
+            raise ValueError("No training samples generated!")
+        
+        # Check if we have any trading signals
+        trading_signals = np.sum(y != 2)
+        if trading_signals == 0:
+            print("⚠️ Warning: No trading signals found! Model will only learn to hold.")
+        else:
+            print(f"✓ Found {trading_signals} trading signals ({trading_signals/len(X)*100:.1f}% of data)")
         
         # Normalize features
         X_reshaped = X.reshape(-1, X.shape[-1])
@@ -781,6 +841,13 @@ def load_forex_data(period="2y", interval="1h"):
                 if len(df) > 500:
                     data[pair] = df
                     print(f"✓ {pair}: {len(df)} candles loaded")
+                    
+                    # Quick data quality check
+                    price_range = df['close'].max() - df['close'].min()
+                    avg_price = df['close'].mean()
+                    volatility = df['close'].pct_change().std()
+                    print(f"  Price range: {price_range:.5f} (avg: {avg_price:.5f})")
+                    print(f"  Volatility: {volatility:.4f}")
                 else:
                     print(f"⚠️ {pair}: Insufficient data ({len(df)} candles)")
             else:
