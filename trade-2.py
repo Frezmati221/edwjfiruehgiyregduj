@@ -481,8 +481,93 @@ class SupervisedForexPredictor:
         weights = len(labels) / (len(unique) * counts)
         return weights / weights.min()
     
-    def predict(self, df, min_confidence=None):
-        """Make prediction on new data"""
+    def calculate_optimal_sl_tp(self, df, action, risk_reward_ratio=2.0):
+        """Calculate optimal Stop Loss and Take Profit levels"""
+        
+        if len(df) < 50:
+            return None, None
+        
+        current_price = df['close'].iloc[-1]
+        
+        # Calculate ATR for dynamic SL/TP
+        high_prices = df['high'].values[-50:].astype(np.float64)
+        low_prices = df['low'].values[-50:].astype(np.float64)
+        close_prices = df['close'].values[-50:].astype(np.float64)
+        
+        atr_14 = talib.ATR(high_prices, low_prices, close_prices, timeperiod=14)[-1]
+        atr_20 = talib.ATR(high_prices, low_prices, close_prices, timeperiod=20)[-1]
+        
+        # Use average ATR for more stable SL/TP
+        avg_atr = (atr_14 + atr_20) / 2
+        
+        # Calculate support/resistance levels
+        support_20 = df['low'].rolling(20).min().iloc[-1]
+        resistance_20 = df['high'].rolling(20).max().iloc[-1]
+        support_50 = df['low'].rolling(50).min().iloc[-1]
+        resistance_50 = df['high'].rolling(50).max().iloc[-1]
+        
+        # Calculate volatility-based SL distance
+        volatility = df['close'].pct_change().rolling(20).std().iloc[-1]
+        vol_multiplier = max(1.5, min(3.0, volatility * 100))  # Scale volatility
+        
+        if action == 'long':
+            # For long positions
+            # SL options: ATR-based, support levels, or volatility-based
+            sl_atr = current_price - (avg_atr * 1.5)
+            sl_support = min(support_20, support_50)
+            sl_vol = current_price - (current_price * volatility * vol_multiplier)
+            
+            # Choose the most conservative (highest) SL
+            stop_loss = max(sl_atr, sl_support, sl_vol)
+            
+            # Ensure SL is reasonable (not too close or too far)
+            min_sl = current_price - (current_price * 0.03)  # Max 3% loss
+            max_sl = current_price - (avg_atr * 0.8)  # Min ATR*0.8 distance
+            stop_loss = max(min_sl, min(stop_loss, max_sl))
+            
+            # Calculate TP based on risk-reward ratio
+            risk_distance = current_price - stop_loss
+            take_profit = current_price + (risk_distance * risk_reward_ratio)
+            
+            # Adjust TP if it hits resistance
+            if take_profit > resistance_20:
+                # Use resistance as TP and recalculate risk-reward
+                take_profit = resistance_20 * 0.995  # Slightly below resistance
+                actual_rr = (take_profit - current_price) / risk_distance
+                if actual_rr < 1.2:  # If RR becomes too low, skip trade
+                    return None, None
+            
+        else:  # short
+            # For short positions
+            # SL options: ATR-based, resistance levels, or volatility-based
+            sl_atr = current_price + (avg_atr * 1.5)
+            sl_resistance = max(resistance_20, resistance_50)
+            sl_vol = current_price + (current_price * volatility * vol_multiplier)
+            
+            # Choose the most conservative (lowest) SL
+            stop_loss = min(sl_atr, sl_resistance, sl_vol)
+            
+            # Ensure SL is reasonable
+            max_sl = current_price + (current_price * 0.03)  # Max 3% loss
+            min_sl = current_price + (avg_atr * 0.8)  # Min ATR*0.8 distance
+            stop_loss = min(max_sl, max(stop_loss, min_sl))
+            
+            # Calculate TP based on risk-reward ratio
+            risk_distance = stop_loss - current_price
+            take_profit = current_price - (risk_distance * risk_reward_ratio)
+            
+            # Adjust TP if it hits support
+            if take_profit < support_20:
+                # Use support as TP and recalculate risk-reward
+                take_profit = support_20 * 1.005  # Slightly above support
+                actual_rr = (current_price - take_profit) / risk_distance
+                if actual_rr < 1.2:  # If RR becomes too low, skip trade
+                    return None, None
+        
+        return stop_loss, take_profit
+
+    def predict(self, df, min_confidence=None, risk_reward_ratio=2.0):
+        """Make prediction on new data with optimal SL/TP levels"""
         
         if min_confidence is None:
             min_confidence = self.min_confidence
@@ -509,15 +594,63 @@ class SupervisedForexPredictor:
         action = ['long', 'short', 'hold'][predicted.item()]
         conf = confidence.item()
         
+        # Calculate SL/TP for trading actions
+        stop_loss = None
+        take_profit = None
+        risk_reward = None
+        
+        if action != 'hold' and conf >= min_confidence:
+            stop_loss, take_profit = self.calculate_optimal_sl_tp(df, action, risk_reward_ratio)
+            
+            if stop_loss is not None and take_profit is not None:
+                current_price = df['close'].iloc[-1]
+                if action == 'long':
+                    risk_distance = current_price - stop_loss
+                    reward_distance = take_profit - current_price
+                else:
+                    risk_distance = stop_loss - current_price
+                    reward_distance = current_price - take_profit
+                
+                risk_reward = reward_distance / risk_distance if risk_distance > 0 else 0
+                
+                # Convert to pips for display
+                pip_value = self.get_pip_value(current_price)
+                risk_pips = risk_distance / pip_value
+                reward_pips = reward_distance / pip_value
+            else:
+                # If we can't calculate good SL/TP, don't trade
+                action = 'hold'
+        
         # Only trade if confidence is high
         if conf < min_confidence:
             action = 'hold'
+            stop_loss = None
+            take_profit = None
+            risk_reward = None
         
-        return {
+        result = {
             'action': action,
             'confidence': conf,
             'probabilities': torch.softmax(logits, dim=1).cpu().numpy()[0]
         }
+        
+        # Add SL/TP information if available
+        if stop_loss is not None and take_profit is not None:
+            current_price = df['close'].iloc[-1]
+            pip_value = self.get_pip_value(current_price)
+            
+            result.update({
+                'entry_price': current_price,
+                'stop_loss': stop_loss,
+                'take_profit': take_profit,
+                'risk_reward_ratio': risk_reward,
+                'risk_pips': abs(current_price - stop_loss) / pip_value,
+                'reward_pips': abs(take_profit - current_price) / pip_value,
+                'sl_distance_percent': abs(current_price - stop_loss) / current_price * 100,
+                'tp_distance_percent': abs(take_profit - current_price) / current_price * 100
+            })
+        
+        return result
     
     def save_model(self, filepath):
         """Save model and scaler"""
@@ -624,6 +757,47 @@ def backtest_high_confidence(predictor, df, min_confidence=0.8):
     
     return results
 
+def demonstrate_sl_tp_system(predictor, data_dict):
+    """Demonstrate the SL/TP calculation system"""
+    
+    print("\n🎯 STOP LOSS & TAKE PROFIT DEMONSTRATION")
+    print("="*60)
+    
+    for pair, df in data_dict.items():
+        print(f"\n📊 {pair} Analysis:")
+        
+        # Get prediction with SL/TP
+        prediction = predictor.predict(df, min_confidence=0.7, risk_reward_ratio=2.0)
+        
+        if prediction['action'] != 'hold':
+            current_price = df['close'].iloc[-1]
+            
+            print(f"  Action: {prediction['action'].upper()}")
+            print(f"  Confidence: {prediction['confidence']:.1%}")
+            print(f"  Entry Price: {current_price:.5f}")
+            
+            if 'stop_loss' in prediction:
+                print(f"  Stop Loss: {prediction['stop_loss']:.5f}")
+                print(f"  Take Profit: {prediction['take_profit']:.5f}")
+                print(f"  Risk/Reward: 1:{prediction['risk_reward_ratio']:.2f}")
+                print(f"  Risk: {prediction['risk_pips']:.1f} pips ({prediction['sl_distance_percent']:.2f}%)")
+                print(f"  Reward: {prediction['reward_pips']:.1f} pips ({prediction['tp_distance_percent']:.2f}%)")
+                
+                # Calculate potential profit/loss
+                if prediction['action'] == 'long':
+                    profit_if_tp = prediction['reward_pips']
+                    loss_if_sl = -prediction['risk_pips']
+                else:
+                    profit_if_tp = prediction['reward_pips']
+                    loss_if_sl = -prediction['risk_pips']
+                
+                print(f"  Potential Profit: +{profit_if_tp:.1f} pips")
+                print(f"  Potential Loss: {loss_if_sl:.1f} pips")
+        else:
+            print(f"  Action: HOLD (Confidence: {prediction['confidence']:.1%})")
+        
+        print("-" * 40)
+
 if __name__ == "__main__":
     print("="*80)
     print("🎯 SUPERVISED LEARNING FOREX PREDICTOR - HIGH WIN RATE SYSTEM")
@@ -644,6 +818,9 @@ if __name__ == "__main__":
     print("\n🚀 Training pattern recognition model...")
     predictor.train(data, epochs=50, batch_size=64, learning_rate=0.001)
     
+    # Demonstrate SL/TP system
+    demonstrate_sl_tp_system(predictor, data)
+    
     # Test on each pair
     print("\n🧪 Testing high-confidence predictions...")
     for pair, df in data.items():
@@ -659,3 +836,4 @@ if __name__ == "__main__":
     print("\n✅ Training complete! Model focuses on HIGH-CONFIDENCE patterns only.")
     print("   The system will only trade when pattern confidence exceeds threshold.")
     print("   This approach prioritizes WIN RATE over trade frequency.")
+    print("   🎯 Now includes dynamic SL/TP calculation with 2:1 risk-reward ratio!")
