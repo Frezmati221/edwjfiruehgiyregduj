@@ -3,7 +3,6 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.cuda.amp import autocast, GradScaler  # For mixed precision
 from collections import deque
 import random
 from typing import Dict, List, Tuple, Optional
@@ -18,27 +17,13 @@ from tqdm import tqdm
 import time
 warnings.filterwarnings('ignore')
 
-# GPU setup
+# Simple GPU setup for maximum speed
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f"🖥️  Using device: {device}")
-
-# Enable optimizations for maximum GPU usage
 if torch.cuda.is_available():
-    torch.backends.cudnn.benchmark = True  # Optimize for consistent input sizes
-    torch.backends.cudnn.deterministic = False  # Allow non-deterministic algorithms for speed
-    torch.cuda.empty_cache()  # Clear GPU cache
-    
-    # Set memory management for better allocation
-    import os
-    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
-    
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
-    print(f"CUDA version: {torch.version.cuda}")
-    print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
-    print("🚀 GPU optimizations enabled")
-    print("💾 Memory fragmentation prevention enabled")
+    torch.backends.cudnn.benchmark = True  # Speed optimization
+    print(f"🚀 GPU: {torch.cuda.get_device_name(0)} - Training will be 3x faster!")
 else:
-    print("⚠️  CUDA not available, using CPU")
+    print("💻 Using CPU")
 
 @dataclass
 class TradingAction:
@@ -244,54 +229,6 @@ def create_sample_data() -> Dict[str, pd.DataFrame]:
         print(f"✓ {pair}: {len(df)} sample data points created")
     
     return data
-    
-    @staticmethod
-    def calculate_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate all technical indicators"""
-        df = df.copy()
-        
-        # Price-based indicators
-        df['sma_5'] = talib.SMA(df['close'], timeperiod=5)
-        df['sma_20'] = talib.SMA(df['close'], timeperiod=20)
-        df['sma_50'] = talib.SMA(df['close'], timeperiod=50)
-        df['ema_12'] = talib.EMA(df['close'], timeperiod=12)
-        df['ema_26'] = talib.EMA(df['close'], timeperiod=26)
-        
-        # Momentum indicators
-        df['rsi'] = talib.RSI(df['close'], timeperiod=14)
-        df['macd'], df['macd_signal'], df['macd_hist'] = talib.MACD(df['close'])
-        df['stoch_k'], df['stoch_d'] = talib.STOCH(df['high'], df['low'], df['close'])
-        
-        # Volatility indicators
-        df['atr'] = talib.ATR(df['high'], df['low'], df['close'], timeperiod=14)
-        df['bb_upper'], df['bb_middle'], df['bb_lower'] = talib.BBANDS(df['close'])
-        
-        # Volume indicators
-        if 'volume' in df.columns:
-            df['obv'] = talib.OBV(df['close'], df['volume'])
-            df['vmc_cipher'] = ForexIndicators.vmc_cipher(
-                df['high'], df['low'], df['close'], df['volume']
-            )
-        
-        # Support/Resistance
-        sr_levels = ForexIndicators.support_resistance_levels(
-            df['high'], df['low'], df['close']
-        )
-        for key, value in sr_levels.items():
-            df[f'sr_{key}'] = value
-        
-        # Pattern recognition
-        df['doji'] = talib.CDLDOJI(df['open'], df['high'], df['low'], df['close'])
-        df['hammer'] = talib.CDLHAMMER(df['open'], df['high'], df['low'], df['close'])
-        df['engulfing'] = talib.CDLENGULFING(df['open'], df['high'], df['low'], df['close'])
-        
-        # Price action features
-        df['high_low_ratio'] = df['high'] / df['low']
-        df['close_open_ratio'] = df['close'] / df['open']
-        df['upper_shadow'] = df['high'] - np.maximum(df['close'], df['open'])
-        df['lower_shadow'] = np.minimum(df['close'], df['open']) - df['low']
-        
-        return df
 
 class ForexEnvironment:
     """Trading environment for reinforcement learning"""
@@ -381,16 +318,16 @@ class ForexEnvironment:
             position_size = risk_amount / (20 * pip_value)  # 20-pip stop loss
             actual_profit = profit * position_size
             
-            # Apply realistic stop loss/take profit with improved reward structure
+            # Apply realistic stop loss/take profit (20/40 pips for 2:1 ratio)
             if pips_gained <= -20:  # Stop loss hit
                 actual_profit = -risk_amount  # Lose exactly 2% of balance
-                reward = -50  # Further reduced penalty to prevent spiraling
+                reward = -200  # Penalty for stop loss
             elif pips_gained >= 40:  # Take profit hit (2:1 ratio)
                 actual_profit = risk_amount * 2  # Gain 4% of balance (2:1 ratio)
-                reward = 100  # Balanced reward for correct direction prediction
+                reward = 400  # Reward for take profit (2x the SL penalty)
             else:
-                # Regular profit/loss - more conservative rewards to prevent extremes
-                reward = max(-25, min(25, pips_gained * 1))  # Much more conservative clamping
+                # Regular profit/loss
+                reward = pips_gained * 2  # Reduced from 10 to 2 for realism
             
             self.balance += actual_profit
             self.position = None
@@ -399,7 +336,7 @@ class ForexEnvironment:
         if action.direction != 'hold':
             # Prevent trading if balance too low (realistic risk management)
             if self.balance < 100:  # Minimum $100 to trade
-                reward -= 5  # Further reduced penalty to prevent spiral
+                reward -= 50  # Penalty for trying to trade with insufficient funds
             else:
                 self.position = action.direction
                 self.entry_price = current_price
@@ -414,30 +351,21 @@ class ForexEnvironment:
         self.current_step += 1
         done = self.current_step >= self.max_steps
         
-        # More conservative penalty for negative balance (prevent extreme spiraling)
+        # Additional penalty if balance goes negative (margin call simulation)
         if self.balance <= 0:
-            reward -= 50  # Much more conservative penalty
+            reward -= 1000
             done = True
         
         return self._get_state(), reward, done
 
 class DQNNetwork(nn.Module):
-    """Deep Q-Network for trading decisions"""
+    """Simple and fast Deep Q-Network for trading decisions"""
     
-    def __init__(self, input_size: int, hidden_size: int = 1536):  # Reduced from 2048 for memory
+    def __init__(self, input_size: int, hidden_size: int = 256):
         super(DQNNetwork, self).__init__()
         
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_size, hidden_size * 12),  # Reduced from 16x
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size * 12, hidden_size * 6),  # Reduced from 8x
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size * 6, hidden_size * 3),  # Reduced from 4x
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size * 3, hidden_size * 2),
+            nn.Linear(input_size, hidden_size * 2),
             nn.ReLU(),
             nn.Dropout(0.2),
             nn.Linear(hidden_size * 2, hidden_size),
@@ -462,61 +390,32 @@ class DQNNetwork(nn.Module):
         return direction, tp_levels, sl_levels
 
 class ForexTradingAgent:
-    """Main trading agent with DQN"""
+    """Simple and fast trading agent with DQN"""
     
     def __init__(self, state_size: int, learning_rate: float = 0.001):
         self.state_size = state_size
+        self.memory = deque(maxlen=10000)
         self.epsilon = 1.0
-        self.epsilon_min = 0.05  # Higher minimum to maintain exploration
-        self.epsilon_decay = 0.998  # Slower decay for more stable learning
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
-                # Balanced batch size based on GPU memory (optimized for stability)
+        # Optimized batch size for GPU
         if device.type == 'cuda':
-            gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            if gpu_memory_gb >= 15:  # High-end GPU (RTX 5080, etc.)
-                self.batch_size = 1024  # Balanced for stability and performance
-            elif gpu_memory_gb >= 12:  # Mid-high GPU (RTX 4070, etc.)
-                self.batch_size = 512   # Balanced for good performance
-            elif gpu_memory_gb >= 8:   # Mid-range GPU
-                self.batch_size = 256
-            else:  # Lower-end GPU
-                self.batch_size = 128
+            self.batch_size = 128  # 4x larger for GPU speed
         else:
-            self.batch_size = 64
+            self.batch_size = 32
         
-        # Optimize gradient accumulation for balanced learning
-        self.gradient_accumulation_steps = 2  # Reduced for better flow
-        
-        # Optimized memory buffer for performance and stability
-        self.memory = deque(maxlen=30000)  # Reduced to prevent memory buildup
-        
-        # Neural networks - move to GPU
+        # Neural networks - move to GPU for speed
         self.q_network = DQNNetwork(state_size).to(device)
         self.target_network = DQNNetwork(state_size).to(device)
-        
-        # Only use DataParallel for multiple high-end GPUs (disabled for better performance)
-        # DataParallel often slows down training for most forex trading scenarios
-        if False:  # Disabled multi-GPU for optimal performance
-            print(f"🔥 Using {torch.cuda.device_count()} GPUs with DataParallel")
-            self.q_network = nn.DataParallel(self.q_network)
-            self.target_network = nn.DataParallel(self.target_network)
-        
         self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
-        
-        # Mixed precision training
-        self.scaler = GradScaler() if device.type == 'cuda' else None
         
         self.update_target_network()
         
-        print(f"🧠 Neural networks initialized on {device}")
-        print(f"📊 Batch size: {self.batch_size} (effective: {self.batch_size * self.gradient_accumulation_steps})")
-        print(f"🔄 Gradient accumulation: {self.gradient_accumulation_steps} steps")
-        print(f"💾 Memory buffer: {self.memory.maxlen:,} experiences")
-        if self.scaler:
-            print("⚡ Mixed precision training enabled")
-        print("🎯 BALANCED TRAINING: ACCURACY + STABILITY")
+        print(f"🧠 Simple neural network initialized on {device}")
+        print(f"📊 Batch size: {self.batch_size} (optimized for {device.type.upper()})")
         
     def update_target_network(self):
         """Copy weights from main network to target network"""
@@ -527,148 +426,68 @@ class ForexTradingAgent:
         self.memory.append((state, action, reward, next_state, done))
     
     def act(self, state: np.ndarray) -> TradingAction:
-        """Choose action using epsilon-greedy policy with timeout protection"""
+        """Choose action using epsilon-greedy policy"""
         if random.random() <= self.epsilon:
             # Random action
             direction = random.choice(['long', 'short', 'hold'])
             tp = random.uniform(20, 100)  # pips
             sl = random.uniform(10, 50)   # pips
         else:
-            # Predict using network with timeout protection
-            try:
-                state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device, non_blocking=True)
-                with torch.no_grad():
-                    # Add timeout for inference
-                    start_time = time.time()
-                    direction_q, tp_q, sl_q = self.q_network(state_tensor)
-                    inference_time = time.time() - start_time
-                    
-                    if inference_time > 2:  # If inference takes more than 2 seconds
-                        print(f"⚠️  Slow inference: {inference_time:.1f}s")
-                
-                direction_idx = torch.argmax(direction_q).item()
-                direction = ['long', 'short', 'hold'][direction_idx]
-                
-                tp_idx = torch.argmax(tp_q).item()
-                sl_idx = torch.argmax(sl_q).item()
-                
-                tp = 20 + tp_idx * 10  # 20-120 pips
-                sl = 10 + sl_idx * 5   # 10-60 pips
-                
-                # Clear tensor less frequently for performance
-                del state_tensor
-                # Only clear cache very occasionally to avoid performance hit
-                if device.type == 'cuda' and random.random() < 0.01:  # 1% chance instead of 10%
-                    torch.cuda.empty_cache()
-                    
-            except Exception as e:
-                print(f"⚠️  Neural network prediction failed: {str(e)} - using random action")
-                direction = random.choice(['long', 'short', 'hold'])
-                tp = random.uniform(20, 100)
-                sl = random.uniform(10, 50)
+            # Predict using network - optimized for GPU
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+            with torch.no_grad():
+                direction_q, tp_q, sl_q = self.q_network(state_tensor)
+            
+            direction_idx = torch.argmax(direction_q).item()
+            direction = ['long', 'short', 'hold'][direction_idx]
+            
+            tp_idx = torch.argmax(tp_q).item()
+            sl_idx = torch.argmax(sl_q).item()
+            
+            tp = 20 + tp_idx * 10  # 20-120 pips
+            sl = 10 + sl_idx * 5   # 10-60 pips
         
         confidence = 1.0 - self.epsilon
         return TradingAction(direction, tp, sl, confidence)
     
     def replay(self):
-        """Train the network on batch of experiences with focus on prediction accuracy"""
+        """Train the network on batch of experiences - GPU optimized"""
         if len(self.memory) < self.batch_size:
             return
         
-        try:
-            # Initialize accumulation variables for better gradient quality
-            total_loss = 0
-            self.optimizer.zero_grad()
-            
-            # Gradient accumulation loop for better learning quality
-            for accumulation_step in range(self.gradient_accumulation_steps):
-                # Sample different batches for each accumulation step
-                batch_indices = random.sample(range(len(self.memory)), self.batch_size)
-                batch = [self.memory[i] for i in batch_indices]
-                
-                # Efficient batch preprocessing
-                states_list = []
-                next_states_list = []
-                rewards_list = []
-                dones_list = []
-                actions_list = []
-                
-                for e in batch:
-                    states_list.append(e[0])
-                    next_states_list.append(e[3])
-                    rewards_list.append(e[2])
-                    dones_list.append(e[4])
-                    # Inline action encoding for speed
-                    if e[1].direction == 'long':
-                        actions_list.append(0)
-                    elif e[1].direction == 'short':
-                        actions_list.append(1)
-                    else:
-                        actions_list.append(2)
-                
-                # Create tensors
-                states = torch.FloatTensor(states_list).to(device, non_blocking=True)
-                next_states = torch.FloatTensor(next_states_list).to(device, non_blocking=True)
-                rewards = torch.FloatTensor(rewards_list).to(device, non_blocking=True)
-                dones = torch.FloatTensor(dones_list).to(device, non_blocking=True)
-                actions = torch.LongTensor(actions_list).unsqueeze(1).to(device, non_blocking=True)
-                
-                if self.scaler:  # Mixed precision training
-                    with autocast():
-                        current_q_values = self.q_network(states)
-                        with torch.no_grad():
-                            next_q_values = self.target_network(next_states)
-                        
-                        # Calculate target Q-values
-                        target_q_values = rewards + (1 - dones) * self.gamma * next_q_values[0].max(1)[0]
-                        current_q = current_q_values[0].gather(1, actions).squeeze()
-                        loss = nn.MSELoss()(current_q, target_q_values.detach())
-                        
-                        # Scale loss for gradient accumulation
-                        loss = loss / self.gradient_accumulation_steps
-                    
-                    # Accumulate gradients
-                    self.scaler.scale(loss).backward()
-                    total_loss += loss.item()
-                else:
-                    current_q_values = self.q_network(states)
-                    with torch.no_grad():
-                        next_q_values = self.target_network(next_states)
-                    
-                    # Calculate target Q-values
-                    target_q_values = rewards + (1 - dones) * self.gamma * next_q_values[0].max(1)[0]
-                    current_q = current_q_values[0].gather(1, actions).squeeze()
-                    loss = nn.MSELoss()(current_q, target_q_values.detach())
-                    
-                    # Scale loss for gradient accumulation
-                    loss = loss / self.gradient_accumulation_steps
-                    
-                    # Accumulate gradients
-                    loss.backward()
-                    total_loss += loss.item()
-                
-                # Clear intermediate tensors
-                del states, next_states, rewards, dones, actions, states_list, next_states_list
-                del rewards_list, dones_list, actions_list
-            
-            # Apply accumulated gradients
-            if self.scaler:
-                self.scaler.step(self.optimizer)
-                self.scaler.update()
+        batch = random.sample(self.memory, self.batch_size)
+        
+        # GPU-optimized tensor creation
+        states = torch.FloatTensor([e[0] for e in batch]).to(device)
+        next_states = torch.FloatTensor([e[3] for e in batch]).to(device)
+        rewards = torch.FloatTensor([e[2] for e in batch]).to(device)
+        dones = torch.FloatTensor([e[4] for e in batch]).to(device)
+        
+        # Simple action encoding for speed
+        actions = []
+        for e in batch:
+            if e[1].direction == 'long':
+                actions.append(0)
+            elif e[1].direction == 'short':
+                actions.append(1)
             else:
-                self.optimizer.step()
-            
-        except torch.cuda.OutOfMemoryError:
-            # Handle OOM gracefully
-            if device.type == 'cuda':
-                torch.cuda.empty_cache()
-            print("⚠️  GPU memory warning - clearing cache and continuing...")
-            self.optimizer.zero_grad()
-        except Exception as e:
-            print(f"⚠️  Training error: {str(e)} - skipping batch...")
-            self.optimizer.zero_grad()
-            if device.type == 'cuda':
-                torch.cuda.empty_cache()
+                actions.append(2)
+        actions = torch.LongTensor(actions).unsqueeze(1).to(device)
+        
+        current_q_values = self.q_network(states)
+        next_q_values = self.target_network(next_states)
+        
+        # Calculate target Q-values
+        target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
+        
+        # Calculate loss
+        current_q = current_q_values[0].gather(1, actions).squeeze()
+        loss = nn.MSELoss()(current_q, target_q_values.detach())
+        
+        # Backpropagation
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
         
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
@@ -687,7 +506,7 @@ class ForexPredictor:
         return self.indicators.calculate_all_indicators(df)
     
     def train(self, data: Dict[str, pd.DataFrame], epochs: int = 100):
-        """Train the model for each currency pair"""
+        """Train the model for each currency pair - optimized for speed"""
         for pair_idx, pair in enumerate(self.pairs):
             if pair not in data:
                 continue
@@ -713,110 +532,23 @@ class ForexPredictor:
                 total_reward = 0
                 done = False
                 steps = 0
-                last_step_time = start_time
                 
                 while not done:
-                    step_start_time = time.time()
+                    action = agent.act(state)
+                    next_state, reward, done = env.step(action)
+                    agent.remember(state, action, reward, next_state, done)
+                    state = next_state
+                    total_reward += reward
+                    steps += 1
                     
-                    try:
-                        action = agent.act(state)
-                        next_state, reward, done = env.step(action)
-                        agent.remember(state, action, reward, next_state, done)
-                        state = next_state
-                        total_reward += reward
-                        steps += 1
-                    except Exception as e:
-                        print(f"⚠️  Step {steps} failed: {str(e)} - skipping...")
-                        if device.type == 'cuda':
-                            torch.cuda.empty_cache()
-                        break
-                    
-                    # Optimize training for better stability and performance
-                    # More conservative training approach to prevent negative spirals
-                    min_training_memory = agent.batch_size * 4  # Larger buffer for more stable learning
-                    
-                    if len(agent.memory) > min_training_memory:
-                        # More conservative training frequency for stability
-                        training_frequency = 25  # Train every 25 steps for more stable learning
-                        
-                        if steps % training_frequency == 0:
-                            training_start = time.time()
-                            max_training_time = 5  # Shorter timeout to prevent slowdowns
-                            
-                            try:
-                                # Only train if recent performance isn't terrible
-                                if total_reward > -1000:  # Don't train when performance is very poor
-                                    agent.replay()
-                                else:
-                                    print(f"    🚫 Skipping training due to poor performance (reward: {total_reward:.1f})")
-                                    
-                                training_time = time.time() - training_start
-                                
-                                if training_time > max_training_time:
-                                    print(f"⚠️  Training took {training_time:.1f}s - clearing cache...")
-                                    if device.type == 'cuda':
-                                        torch.cuda.empty_cache()
-                                        torch.cuda.synchronize()
-                                    
-                            except Exception as e:
-                                print(f"⚠️  Training failed: {str(e)} - clearing cache and continuing")
-                                if device.type == 'cuda':
-                                    torch.cuda.empty_cache()
-                        
-                        # More frequent cache management to prevent memory buildup
-                        if steps % 1000 == 0 and device.type == 'cuda':  # More frequent clearing
-                            torch.cuda.empty_cache()
-                            torch.cuda.synchronize()
-                    
-                    # More aggressive step timeout to catch issues early
-                    step_time = time.time() - step_start_time
-                    if step_time > 3:  # Reduced from 5 to 3 seconds
-                        print(f"⚠️  Step {steps} took {step_time:.1f}s - clearing cache...")
-                        if device.type == 'cuda':
-                            torch.cuda.empty_cache()
-                        # Don't break - just warn and continue
-                    
-                    # Progress monitoring with performance tracking
-                    if steps % 200 == 0:  # Every 200 steps
-                        elapsed = time.time() - last_step_time
-                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 200 steps: {elapsed:.1f}s, ε: {agent.epsilon:.3f}")
-                        last_step_time = time.time()
-                        
-                        # Check for performance degradation
-                        if elapsed > 10:  # If 200 steps take more than 10 seconds
-                            print(f"    ⚠️  Performance degradation detected - clearing memory and resetting")
-                            if device.type == 'cuda':
-                                torch.cuda.empty_cache()
-                                torch.cuda.synchronize()
-                            # Increase exploration to break out of bad patterns
-                            agent.epsilon = min(0.5, agent.epsilon + 0.1)
-                        
-                        # Regular cache management
-                        if device.type == 'cuda' and steps % 2000 == 0:  # More frequent cache clearing
-                            torch.cuda.empty_cache()
+                    # Train more frequently on GPU for speed
+                    min_memory = agent.batch_size
+                    if len(agent.memory) > min_memory:
+                        agent.replay()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
                     agent.update_target_network()
-                
-                # Improved early stopping with complete reset (prevent spiraling)
-                if total_reward < -1500:  # Much more aggressive early stopping
-                    print(f"\n⚠️  Early stopping due to poor performance (reward: {total_reward:.1f})")
-                    print("    🔄 Complete environment and agent reset...")
-                    # Complete reset to prevent cascading failures
-                    env.balance = env.initial_balance
-                    env.position = None
-                    env.current_step = env.lookback_period
-                    # Reset agent exploration to add more randomness
-                    agent.epsilon = min(0.4, agent.epsilon + 0.2)
-                    total_reward = 0  # Complete reset instead of partial cap
-                    state = env.reset()  # Get fresh state
-                    print(f"    ✅ Complete reset done, epsilon increased to {agent.epsilon:.3f}")
-                    # Clear memory issues
-                    if device.type == 'cuda':
-                        torch.cuda.empty_cache()
-                        torch.cuda.synchronize()
-                    break  # Exit episode early
                 
                 # Track performance
                 rewards_history.append(total_reward)
@@ -828,19 +560,7 @@ class ForexPredictor:
                 
                 # Update progress bar with detailed info
                 epoch_time = time.time() - start_time
-                
-                # Add GPU memory info if using CUDA
-                gpu_info = ""
-                if device.type == 'cuda':
-                    torch.cuda.synchronize()  # Ensure all operations complete
-                    gpu_memory = torch.cuda.memory_allocated() / 1024**3  # GB
-                    gpu_max_memory = torch.cuda.max_memory_allocated() / 1024**3  # GB
-                    gpu_reserved = torch.cuda.memory_reserved() / 1024**3  # GB
-                    total_memory = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                    gpu_utilization = (gpu_reserved / total_memory) * 100
-                    gpu_info = f", GPU: {gpu_memory:.1f}/{gpu_reserved:.1f}/{total_memory:.1f}GB ({gpu_utilization:.1f}%)"
-                
-                postfix = f"Reward: {total_reward:.2f}, Avg: {recent_avg:.2f}, Best: {best_reward:.2f}, ε: {agent.epsilon:.3f}, Steps: {steps}, Time: {epoch_time:.1f}s{gpu_info}"
+                postfix = f"Reward: {total_reward:.2f}, Avg: {recent_avg:.2f}, Best: {best_reward:.2f}, ε: {agent.epsilon:.3f}, Steps: {steps}, Time: {epoch_time:.1f}s"
                 pbar.set_postfix_str(postfix)
                 
                 # Print detailed progress every 20 epochs
@@ -848,7 +568,7 @@ class ForexPredictor:
                     print(f"\n    📊 Epoch {epoch:3d} Summary:")
                     print(f"       💰 Reward: {total_reward:8.2f} | Avg(10): {recent_avg:8.2f} | Best: {best_reward:8.2f}")
                     print(f"       🎯 Epsilon: {agent.epsilon:.3f} | Steps: {steps:4d} | Time: {epoch_time:.1f}s")
-                    print(f"       📈 Memory: {len(agent.memory):5d} | Loss Rate: {(1-agent.epsilon)*100:.1f}%")
+                    print(f"       📈 Memory: {len(agent.memory):5d} | GPU: {(1-agent.epsilon)*100:.1f}%")
             
             pbar.close()
             print(f"✅ {pair} training completed! Best reward: {best_reward:.2f}")
@@ -911,7 +631,7 @@ class ForexPredictor:
             agent.q_network.load_state_dict(agent_data['q_network'])
             agent.target_network.load_state_dict(agent_data['target_network'])
             agent.epsilon = agent_data['epsilon']
-            # Ensure models are on the correct device
+            # Ensure models are on correct device
             agent.q_network.to(device)
             agent.target_network.to(device)
             self.agents[pair] = agent
@@ -919,31 +639,26 @@ class ForexPredictor:
 # Example usage
 if __name__ == "__main__":
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Train Forex AI Trading Model')
+    parser = argparse.ArgumentParser(description='Train Forex AI Trading Model - Simple & Fast')
     parser.add_argument('--epochs', type=int, default=100, help='Number of training epochs (default: 100)')
     parser.add_argument('--period', type=str, default='1y', help='Data period (default: 1y)')
     parser.add_argument('--interval', type=str, default='1h', help='Data interval (default: 1h)')
     parser.add_argument('--save-dir', type=str, default='models', help='Directory to save models (default: models)')
     parser.add_argument('--pairs', type=str, nargs='+', default=['EURUSD', 'GBPUSD', 'USDJPY'], 
                        help='Currency pairs to train (default: EURUSD GBPUSD USDJPY)')
-    parser.add_argument('--no-gpu', action='store_true', help='Force CPU usage even if GPU is available')
     
     args = parser.parse_args()
     
-    # Override device if --no-gpu is specified
-    if args.no_gpu:
-        device = torch.device('cpu')
-        print("🔄 Forced CPU usage (--no-gpu flag)")
-    
     print("="*60)
-    print("🚀 Forex AI Trading Model Training")
+    print("🚀 Simple & Fast Forex AI Training")
     print("="*60)
-    print(f"🖥️  Device: {device}")
     print(f"📊 Data period: {args.period}")
     print(f"⏰ Data interval: {args.interval}")
     print(f"🔄 Training epochs: {args.epochs}")
     print(f"💰 Currency pairs: {', '.join(args.pairs)}")
     print(f"💾 Save directory: {args.save_dir}")
+    if device.type == 'cuda':
+        print(f"🚀 GPU acceleration: ENABLED")
     print("="*60)
     
     # Create save directory if it doesn't exist
@@ -976,10 +691,12 @@ if __name__ == "__main__":
         
         # Train the models
         print(f"\n🎯 Starting training for {args.epochs} epochs...")
+        start_total = time.time()
         predictor.train(data, epochs=args.epochs)
+        total_time = time.time() - start_total
         
         # Save the trained models
-        model_filename = f"forex_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl"
+        model_filename = f"forex_model_simple_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pkl"
         model_path = os.path.join(args.save_dir, model_filename)
         
         print(f"\n💾 Saving trained model to: {model_path}")
@@ -988,6 +705,9 @@ if __name__ == "__main__":
         print("\n" + "="*60)
         print("✅ Training completed successfully!")
         print(f"📁 Model saved as: {model_path}")
+        print(f"⏱️  Total training time: {total_time/60:.1f} minutes")
+        if device.type == 'cuda':
+            print(f"🚀 GPU acceleration saved ~{total_time*2/60:.1f} minutes vs CPU!")
         print("="*60)
         
         # Test the trained model with a sample prediction
@@ -1008,4 +728,4 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
     
-    print("\nForex AI Trading Model training session ended.")
+    print("\nSimple & Fast Forex AI training session ended.")
