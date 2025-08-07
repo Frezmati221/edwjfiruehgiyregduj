@@ -384,13 +384,13 @@ class ForexEnvironment:
             # Apply realistic stop loss/take profit (20/40 pips for 2:1 ratio)
             if pips_gained <= -20:  # Stop loss hit
                 actual_profit = -risk_amount  # Lose exactly 2% of balance
-                reward = -500  # Increased penalty for wrong direction prediction
+                reward = -100  # Reduced penalty to prevent negative spiral
             elif pips_gained >= 40:  # Take profit hit (2:1 ratio)
                 actual_profit = risk_amount * 2  # Gain 4% of balance (2:1 ratio)
-                reward = 1000  # Increased reward for correct direction prediction
+                reward = 200  # Balanced reward for correct direction prediction
             else:
-                # Regular profit/loss - emphasize direction accuracy
-                reward = pips_gained * 5  # Increased from 2 to emphasize accuracy
+                # Regular profit/loss - emphasize direction accuracy but prevent extreme negatives
+                reward = max(-50, min(50, pips_gained * 2))  # Clamped rewards
             
             self.balance += actual_profit
             self.position = None
@@ -399,7 +399,7 @@ class ForexEnvironment:
         if action.direction != 'hold':
             # Prevent trading if balance too low (realistic risk management)
             if self.balance < 100:  # Minimum $100 to trade
-                reward -= 50  # Penalty for trying to trade with insufficient funds
+                reward -= 10  # Reduced penalty to prevent spiral
             else:
                 self.position = action.direction
                 self.entry_price = current_price
@@ -416,7 +416,7 @@ class ForexEnvironment:
         
         # Additional penalty if balance goes negative (margin call simulation)
         if self.balance <= 0:
-            reward -= 1000
+            reward -= 200  # Reduced penalty to prevent extreme negatives
             done = True
         
         return self._get_state(), reward, done
@@ -486,11 +486,11 @@ class ForexTradingAgent:
         else:
             self.batch_size = 64
         
-        # Optimize gradient accumulation for better learning quality
-        self.gradient_accumulation_steps = 4  # Increased for better gradient estimates
+        # Optimize gradient accumulation for balanced learning
+        self.gradient_accumulation_steps = 2  # Reduced for better flow
         
-        # Increase memory buffer for better learning diversity and accuracy
-        self.memory = deque(maxlen=100000)  # Increased back for better accuracy
+        # Balanced memory buffer for good learning and performance
+        self.memory = deque(maxlen=50000)  # Balanced size for good learning
         
         # Neural networks - move to GPU
         self.q_network = DQNNetwork(state_size).to(device)
@@ -733,25 +733,24 @@ class ForexPredictor:
                     
                     # Optimize training for maximum prediction accuracy
                     # Train more frequently when we have sufficient data for better learning
-                    min_training_memory = agent.batch_size * 3  # Reduced minimum for more frequent training
+                    min_training_memory = agent.batch_size * 2  # Reduced minimum for faster training start
                     
                     if len(agent.memory) > min_training_memory:
-                        # More frequent training for better accuracy - prioritize learning over speed
-                        training_frequency = 5  # Train every 5 steps for maximum accuracy
+                        # Balanced training frequency for stable learning
+                        training_frequency = 10  # Train every 10 steps for balanced performance
                         
                         if steps % training_frequency == 0:
                             training_start = time.time()
-                            max_training_time = 15  # Allow more time for thorough training
+                            max_training_time = 8  # Reduced timeout for better flow
                             
                             try:
-                                # Train multiple times per session for better accuracy
-                                for _ in range(2):  # 2 training iterations per session
-                                    agent.replay()
+                                # Single training iteration for better flow
+                                agent.replay()
                                     
                                 training_time = time.time() - training_start
                                 
                                 if training_time > max_training_time:
-                                    print(f"⚠️  Training took {training_time:.1f}s - but continuing for accuracy")
+                                    print(f"⚠️  Training took {training_time:.1f}s - optimizing...")
                                     
                             except Exception as e:
                                 print(f"⚠️  Training failed: {str(e)} - skipping training")
