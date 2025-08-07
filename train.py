@@ -472,32 +472,33 @@ class ForexTradingAgent:
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
-        # Adaptive batch size based on GPU memory (reduced for stability)
+                # Adaptive batch size based on GPU memory (optimized for performance)
         if device.type == 'cuda':
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
-            if gpu_memory_gb >= 15:  # Your 15.5GB GPU
-                self.batch_size = 512  # Significantly reduced for stability
-            elif gpu_memory_gb >= 12:  # High-end GPU
-                self.batch_size = 256
-            elif gpu_memory_gb >= 8:  # Mid-range GPU
-                self.batch_size = 128
+            if gpu_memory_gb >= 15:  # High-end GPU (RTX 5080, etc.)
+                self.batch_size = 2048  # Increased significantly for better GPU utilization
+            elif gpu_memory_gb >= 12:  # Mid-high GPU (RTX 4070, etc.)
+                self.batch_size = 1024  # Increased for better performance
+            elif gpu_memory_gb >= 8:   # Mid-range GPU
+                self.batch_size = 512
             else:  # Lower-end GPU
-                self.batch_size = 64
+                self.batch_size = 256
         else:
-            self.batch_size = 32
+            self.batch_size = 64
         
-        # Reduce gradient accumulation to balance memory vs throughput
-        self.gradient_accumulation_steps = 1  # Reduced to 1 for stability
+        # Optimize gradient accumulation for better throughput
+        self.gradient_accumulation_steps = 2  # Increased back to 2 for better performance
         
-        # Reduce memory buffer to prevent freezing
-        self.memory = deque(maxlen=50000)  # Significantly reduced from 150000
+        # Increase memory buffer for better training diversity
+        self.memory = deque(maxlen=100000)  # Increased from 50000
         
-        # Neural networks - move to GPU with DataParallel for multi-GPU
+        # Neural networks - move to GPU
         self.q_network = DQNNetwork(state_size).to(device)
         self.target_network = DQNNetwork(state_size).to(device)
         
-        # Use DataParallel for multiple GPUs if available
-        if device.type == 'cuda' and torch.cuda.device_count() > 1:
+        # Only use DataParallel for multiple high-end GPUs (disabled for better performance)
+        # DataParallel often slows down training for most forex trading scenarios
+        if False:  # Disabled multi-GPU for optimal performance
             print(f"🔥 Using {torch.cuda.device_count()} GPUs with DataParallel")
             self.q_network = nn.DataParallel(self.q_network)
             self.target_network = nn.DataParallel(self.target_network)
@@ -554,9 +555,10 @@ class ForexTradingAgent:
                 tp = 20 + tp_idx * 10  # 20-120 pips
                 sl = 10 + sl_idx * 5   # 10-60 pips
                 
-                # Clear tensor immediately
+                # Clear tensor less frequently for performance
                 del state_tensor
-                if device.type == 'cuda':
+                # Only clear cache occasionally to avoid performance hit
+                if device.type == 'cuda' and random.random() < 0.1:  # 10% chance
                     torch.cuda.empty_cache()
                     
             except Exception as e:
@@ -719,47 +721,46 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         break
                     
-                    # Train with aggressive timeout protection
-                    if len(agent.memory) > agent.batch_size and steps % 10 == 0:  # Train less frequently
+                    # Train more aggressively for better GPU utilization
+                    if len(agent.memory) > agent.batch_size and steps % 5 == 0:  # Train more frequently
                         training_start = time.time()
-                        max_training_time = 5  # Maximum 5 seconds for training
+                        max_training_time = 10  # Increased timeout for larger batches
                         
                         try:
-                            # Single training attempt with timeout
-                            agent.replay()
+                            # Multiple training attempts for better learning
+                            for train_round in range(2):  # 2 training rounds per interval
+                                agent.replay()
+                                
                             training_time = time.time() - training_start
                             
                             if training_time > max_training_time:
-                                print(f"⚠️  Training took {training_time:.1f}s - reducing complexity")
-                                if device.type == 'cuda':
-                                    torch.cuda.empty_cache()
+                                print(f"⚠️  Training took {training_time:.1f}s - acceptable for large batches")
                         except Exception as e:
                             print(f"⚠️  Training failed: {str(e)} - skipping training")
                             if device.type == 'cuda':
                                 torch.cuda.empty_cache()
                         
-                        # Force cache clearing after training
-                        if device.type == 'cuda':
+                        # Less frequent cache clearing for better performance
+                        if steps % 100 == 0 and device.type == 'cuda':  # Reduced frequency
                             torch.cuda.empty_cache()
                     
-                    # Anti-freeze protection: check step timing
+                    # Reduce step timeout for performance - most steps should be fast
                     step_time = time.time() - step_start_time
-                    if step_time > 10:  # Reduced from 30 to 10 seconds
-                        print(f"⚠️  Step {steps} took {step_time:.1f}s - potential freeze, breaking...")
+                    if step_time > 5:  # Reduced from 10 to 5 seconds
+                        print(f"⚠️  Step {steps} took {step_time:.1f}s - potential performance issue")
                         if device.type == 'cuda':
                             torch.cuda.empty_cache()
-                        break
+                        # Don't break - just warn and continue
                     
-                    # Aggressive progress monitoring every 50 steps
-                    if steps % 50 == 0:
+                    # Less frequent progress monitoring for better performance
+                    if steps % 100 == 0:  # Back to every 100 steps
                         elapsed = time.time() - last_step_time
-                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 50 steps: {elapsed:.1f}s")
+                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 100 steps: {elapsed:.1f}s")
                         last_step_time = time.time()
                         
-                        # Force garbage collection and cache clearing
-                        if device.type == 'cuda':
+                        # Minimal cache management for performance
+                        if device.type == 'cuda' and steps % 200 == 0:  # Even less frequent
                             torch.cuda.synchronize()
-                            torch.cuda.empty_cache()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
