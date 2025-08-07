@@ -44,10 +44,10 @@ class ForexPatternDataset(Dataset):
 class PatternRecognitionNetwork(nn.Module):
     """Advanced pattern recognition network for high win-rate predictions"""
     
-    def __init__(self, input_dim, hidden_dim=256, num_layers=4, dropout=0.3):
+    def __init__(self, input_dim, hidden_dim=128, num_layers=3, dropout=0.4):
         super().__init__()
         
-        # Multi-layer LSTM for temporal pattern recognition
+        # Smaller, more regularized LSTM
         self.lstm = nn.LSTM(
             input_dim, 
             hidden_dim, 
@@ -60,34 +60,31 @@ class PatternRecognitionNetwork(nn.Module):
         # Attention mechanism for important patterns
         self.attention = nn.MultiheadAttention(
             hidden_dim * 2,  # bidirectional
-            num_heads=8,
+            num_heads=4,  # Reduced heads
             dropout=dropout
         )
         
-        # Deep classifier with residual connections
+        # Simplified classifier with more dropout
         self.classifier = nn.Sequential(
             nn.Linear(hidden_dim * 2, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.ReLU(),
-            nn.Dropout(dropout),
+            nn.Dropout(dropout + 0.1),  # Extra dropout
             
             nn.Linear(hidden_dim, hidden_dim // 2),
             nn.BatchNorm1d(hidden_dim // 2),
             nn.ReLU(),
             nn.Dropout(dropout),
             
-            nn.Linear(hidden_dim // 2, hidden_dim // 4),
-            nn.BatchNorm1d(hidden_dim // 4),
-            nn.ReLU(),
-            
-            nn.Linear(hidden_dim // 4, 3)  # 3 classes: long, short, hold
+            nn.Linear(hidden_dim // 2, 3)  # 3 classes: long, short, hold
         )
         
-        # Confidence estimator
+        # Confidence estimator with regularization
         self.confidence = nn.Sequential(
-            nn.Linear(hidden_dim * 2, 64),
+            nn.Linear(hidden_dim * 2, 32),
             nn.ReLU(),
-            nn.Linear(64, 1),
+            nn.Dropout(dropout),
+            nn.Linear(32, 1),
             nn.Sigmoid()
         )
         
@@ -238,45 +235,33 @@ class SupervisedForexPredictor:
         
         return features_df
     
-    def create_labels(self, df, lookahead=10, min_profit_pips=15):
-        """Create labels based on future price movements"""
+    def create_labels(self, df, lookahead=10, min_profit_pips=12):
+        """Create labels based on realistic future price movements"""
         
         labels = []
         
         for i in range(len(df) - lookahead):
-            future_prices = df['close'].iloc[i+1:i+lookahead+1].values
             current_price = df['close'].iloc[i]
+            # Use realistic exit price (close of last candle in lookahead)
+            exit_price = df['close'].iloc[i + lookahead]
             
-            # Calculate maximum favorable excursion
+            # Calculate actual profit if we held for the full period
+            profit_long = (exit_price - current_price) / self.get_pip_value(current_price)
+            profit_short = (current_price - exit_price) / self.get_pip_value(current_price)
+            
+            # Also check maximum favorable excursion for potential
+            future_prices = df['close'].iloc[i+1:i+lookahead+1].values
             max_profit_long = (future_prices.max() - current_price) / self.get_pip_value(current_price)
             max_profit_short = (current_price - future_prices.min()) / self.get_pip_value(current_price)
             
-            # Determine best action
-            if max_profit_long >= min_profit_pips and max_profit_long > max_profit_short:
-                # Check if it reaches profit before significant drawdown
-                for j, price in enumerate(future_prices):
-                    profit = (price - current_price) / self.get_pip_value(current_price)
-                    if profit >= min_profit_pips:
-                        labels.append(0)  # Long
-                        break
-                    elif profit < -min_profit_pips/2:  # Stop if drawdown too large
-                        labels.append(2)  # Hold
-                        break
-                else:
-                    labels.append(2)  # Hold if unclear
-                    
-            elif max_profit_short >= min_profit_pips and max_profit_short > max_profit_long:
-                # Check if it reaches profit before significant drawdown
-                for j, price in enumerate(future_prices):
-                    profit = (current_price - price) / self.get_pip_value(current_price)
-                    if profit >= min_profit_pips:
-                        labels.append(1)  # Short
-                        break
-                    elif profit < -min_profit_pips/2:  # Stop if drawdown too large
-                        labels.append(2)  # Hold
-                        break
-                else:
-                    labels.append(2)  # Hold if unclear
+            # More realistic labeling: must have both potential AND actual profit
+            if (profit_long >= min_profit_pips and max_profit_long >= min_profit_pips * 1.5 and 
+                profit_long > abs(profit_short)):
+                labels.append(0)  # Long
+                
+            elif (profit_short >= min_profit_pips and max_profit_short >= min_profit_pips * 1.5 and 
+                  profit_short > abs(profit_long)):
+                labels.append(1)  # Short
             else:
                 labels.append(2)  # Hold
         
@@ -317,8 +302,8 @@ class SupervisedForexPredictor:
             # Create features
             features_df = self.create_advanced_features(df)
             
-            # Create labels (only for winning trades)
-            labels = self.create_labels(df, lookahead=10, min_profit_pips=20)
+            # Create labels (more realistic requirements)
+            labels = self.create_labels(df, lookahead=10, min_profit_pips=12)
             
             # Convert to numpy
             features = features_df.values
@@ -388,8 +373,9 @@ class SupervisedForexPredictor:
         # Confidence loss to encourage higher confidence predictions
         confidence_criterion = nn.BCELoss()
         
-        optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.001)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=8, factor=0.7)
+        # Use stronger regularization
+        optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
         
         # Training loop
         best_val_acc = 0
@@ -504,25 +490,27 @@ class SupervisedForexPredictor:
             
             scheduler.step(val_loss)
             
-            # Gradually increase confidence threshold
-            if epoch > 20 and avg_confidence > 0.6 and self.min_confidence < 0.7:
-                self.min_confidence = min(0.7, self.min_confidence + 0.02)
+            # Gradually increase confidence threshold (more conservative)
+            if epoch > 15 and avg_confidence > 0.55 and self.min_confidence < 0.65:
+                self.min_confidence = min(0.65, self.min_confidence + 0.015)
                 print(f"  📈 Increased confidence threshold to {self.min_confidence:.1%}")
             
-            # Early stopping based on validation accuracy (not just confidence)
-            combined_score = val_acc + val_conf_acc * 0.5 + avg_confidence * 0.3
+            # More strict early stopping based on generalization gap
+            val_gap = train_acc - val_acc  # Gap between train and validation
+            combined_score = val_acc + val_conf_acc * 0.3 + avg_confidence * 0.2 - val_gap * 0.5
+            
             if combined_score > best_val_acc:
                 best_val_acc = combined_score
                 patience_counter = 0
                 # Save best model
                 try:
                     self.save_model('best_model.pth')
-                    print(f"  💾 Best model saved (Combined Score: {combined_score:.3f})")
+                    print(f"  💾 Best model saved (Score: {combined_score:.3f}, Gap: {val_gap:.2%})")
                 except Exception as e:
                     print(f"  ⚠️ Failed to save model: {e}")
             else:
                 patience_counter += 1
-                if patience_counter >= 15:  # Increased patience
+                if patience_counter >= 10:  # Earlier stopping
                     print("⏹️ Early stopping triggered")
                     break
         
@@ -802,8 +790,8 @@ def load_forex_data(period="2y", interval="1h"):
     
     return data
 
-def backtest_high_confidence(predictor, df, min_confidence=0.8):
-    """Backtest only high-confidence predictions"""
+def backtest_high_confidence(predictor, df, min_confidence=0.6):
+    """Backtest only high-confidence predictions with realistic SL/TP"""
     
     results = []
     
@@ -813,20 +801,59 @@ def backtest_high_confidence(predictor, df, min_confidence=0.8):
         pred = predictor.predict(current_data, min_confidence=min_confidence)
         
         if pred['action'] != 'hold':
-            # Simulate trade
+            # Simulate realistic trade with SL/TP
             entry_price = df['close'].iloc[i]
             
-            # Check next 10 candles
-            future_prices = df['close'].iloc[i+1:i+11].values
+            # Use SL/TP if available, otherwise simple exit
+            if 'stop_loss' in pred and 'take_profit' in pred:
+                stop_loss = pred['stop_loss']
+                take_profit = pred['take_profit']
+                
+                # Check each future candle for SL/TP hits
+                final_profit = 0
+                for j in range(1, min(11, len(df) - i)):
+                    high_price = df['high'].iloc[i + j]
+                    low_price = df['low'].iloc[i + j]
+                    
+                    if pred['action'] == 'long':
+                        # Check TP first (more realistic)
+                        if high_price >= take_profit:
+                            final_profit = (take_profit - entry_price) / predictor.get_pip_value(entry_price)
+                            break
+                        # Then check SL
+                        elif low_price <= stop_loss:
+                            final_profit = (stop_loss - entry_price) / predictor.get_pip_value(entry_price)
+                            break
+                    else:  # short
+                        # Check TP first
+                        if low_price <= take_profit:
+                            final_profit = (entry_price - take_profit) / predictor.get_pip_value(entry_price)
+                            break
+                        # Then check SL
+                        elif high_price >= stop_loss:
+                            final_profit = (entry_price - stop_loss) / predictor.get_pip_value(entry_price)
+                            break
+                else:
+                    # Exit at end of period if no SL/TP hit
+                    exit_price = df['close'].iloc[i + 10]
+                    if pred['action'] == 'long':
+                        final_profit = (exit_price - entry_price) / predictor.get_pip_value(entry_price)
+                    else:
+                        final_profit = (entry_price - exit_price) / predictor.get_pip_value(entry_price)
+            else:
+                # Fallback to simple exit
+                exit_price = df['close'].iloc[i + 10]
+                if pred['action'] == 'long':
+                    final_profit = (exit_price - entry_price) / predictor.get_pip_value(entry_price)
+                else:
+                    final_profit = (entry_price - exit_price) / predictor.get_pip_value(entry_price)
             
+            # Calculate max profit for comparison
+            future_prices = df['close'].iloc[i+1:i+11].values
             if pred['action'] == 'long':
                 max_profit = (future_prices.max() - entry_price) / predictor.get_pip_value(entry_price)
-                exit_price = future_prices[-1]
-                final_profit = (exit_price - entry_price) / predictor.get_pip_value(entry_price)
-            else:  # short
+            else:
                 max_profit = (entry_price - future_prices.min()) / predictor.get_pip_value(entry_price)
-                exit_price = future_prices[-1]
-                final_profit = (entry_price - exit_price) / predictor.get_pip_value(entry_price)
             
             results.append({
                 'action': pred['action'],
@@ -840,13 +867,15 @@ def backtest_high_confidence(predictor, df, min_confidence=0.8):
         wins = sum(1 for r in results if r['win'])
         win_rate = wins / len(results)
         avg_confidence = np.mean([r['confidence'] for r in results])
+        avg_profit = np.mean([r['final_profit'] for r in results])
         
         print(f"\n📊 Backtest Results (min confidence: {min_confidence:.1%}):")
         print(f"  Total Trades: {len(results)}")
         print(f"  Win Rate: {win_rate:.1%}")
         print(f"  Average Confidence: {avg_confidence:.1%}")
         print(f"  Average Max Profit: {np.mean([r['max_profit'] for r in results]):.1f} pips")
-        print(f"  Average Final Profit: {np.mean([r['final_profit'] for r in results]):.1f} pips")
+        print(f"  Average Final Profit: {avg_profit:.1f} pips")
+        print(f"  Expected Value: {avg_profit:.2f} pips per trade")
     
     return results
 
@@ -922,8 +951,8 @@ if __name__ == "__main__":
         test_start = int(len(df) * 0.8)
         test_df = df.iloc[test_start:]
         
-        # Test with different confidence thresholds
-        for min_conf in [0.7, 0.8, 0.9]:
+        # Test with more realistic confidence thresholds
+        for min_conf in [0.55, 0.65, 0.75]:
             results = backtest_high_confidence(predictor, test_df, min_confidence=min_conf)
     
     print("\n✅ Training complete! Model focuses on HIGH-CONFIDENCE patterns only.")
