@@ -385,7 +385,7 @@ class SupervisedForexPredictor:
         class_weights = self.calculate_class_weights(y_train)
         criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
         optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5, verbose=True)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
         
         # Training loop
         best_val_acc = 0
