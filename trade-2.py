@@ -13,6 +13,7 @@ import warnings
 import logging
 from tqdm import tqdm
 import os
+import pickle
 from typing import Dict, List, Tuple, Optional
 import json
 
@@ -342,13 +343,23 @@ class SupervisedForexPredictor:
         hold_mask = y == 2
         hold_indices = np.where(hold_mask)[0]
         n_hold_samples = min(len(hold_indices), len(X_filtered) // 2)
-        hold_sample_indices = np.random.choice(hold_indices, n_hold_samples, replace=False)
-        
-        X = np.vstack([X_filtered, X[hold_sample_indices]])
-        y = np.hstack([y_filtered, y[hold_sample_indices]])
+        if n_hold_samples > 0:
+            hold_sample_indices = np.random.choice(hold_indices, n_hold_samples, replace=False)
+            X = np.vstack([X_filtered, X[hold_sample_indices]])
+            y = np.hstack([y_filtered, y[hold_sample_indices]])
+        else:
+            X = X_filtered
+            y = y_filtered
         
         print(f"Training samples: {len(X)}")
         print(f"Class distribution: Long={np.sum(y==0)}, Short={np.sum(y==1)}, Hold={np.sum(y==2)}")
+        
+        # Check if we have enough training data
+        if len(X) < 1000:
+            print("⚠️ Warning: Very few training samples. Consider:")
+            print("   - Reducing min_profit_pips")
+            print("   - Increasing data period")
+            print("   - Checking data quality")
         
         # Normalize features
         X_reshaped = X.reshape(-1, X.shape[-1])
@@ -356,14 +367,14 @@ class SupervisedForexPredictor:
         X = X_normalized.reshape(X.shape)
         
         # Split data
-        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
         
         # Create datasets
         train_dataset = ForexPatternDataset(X_train, y_train)
         val_dataset = ForexPatternDataset(X_val, y_val)
         
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
+        val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
         
         # Initialize model
         input_dim = X.shape[-1]
@@ -374,11 +385,15 @@ class SupervisedForexPredictor:
         class_weights = self.calculate_class_weights(y_train)
         criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
         optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5, verbose=True)
         
         # Training loop
         best_val_acc = 0
         patience_counter = 0
+        
+        print(f"\n🚀 Starting training with {len(train_dataset)} training samples...")
+        print(f"   Validation samples: {len(val_dataset)}")
+        print(f"   Confidence threshold: {self.min_confidence:.1%}")
         
         for epoch in range(epochs):
             # Training
@@ -463,17 +478,26 @@ class SupervisedForexPredictor:
                 best_val_acc = val_conf_acc
                 patience_counter = 0
                 # Save best model
-                self.save_model('best_model.pth')
+                try:
+                    self.save_model('best_model.pth')
+                    print(f"  💾 Best model saved (High-Conf Acc: {val_conf_acc:.2%})")
+                except Exception as e:
+                    print(f"  ⚠️ Failed to save model: {e}")
             else:
                 patience_counter += 1
                 if patience_counter >= 10:
-                    print("Early stopping triggered")
+                    print("⏹️ Early stopping triggered")
                     break
         
         print(f"\n✅ Training complete! Best validation high-confidence accuracy: {best_val_acc:.2%}")
         
         # Load best model
-        self.load_model('best_model.pth')
+        try:
+            self.load_model('best_model.pth')
+            print("✅ Best model loaded successfully")
+        except Exception as e:
+            print(f"⚠️ Failed to load best model: {e}")
+            print("   Using current model state")
     
     def calculate_class_weights(self, labels):
         """Calculate class weights for imbalanced dataset"""
@@ -654,26 +678,58 @@ class SupervisedForexPredictor:
     
     def save_model(self, filepath):
         """Save model and scaler"""
+        import pickle
+        
+        # Save model state dict separately
         torch.save({
             'model_state_dict': self.model.state_dict(),
-            'scaler': self.scaler,
             'sequence_length': self.sequence_length,
             'min_confidence': self.min_confidence,
             'input_dim': self.model.lstm.input_size
         }, filepath)
         
+        # Save scaler separately using pickle
+        scaler_filepath = filepath.replace('.pth', '_scaler.pkl')
+        with open(scaler_filepath, 'wb') as f:
+            pickle.dump(self.scaler, f)
+        
+        print(f"Model saved to {filepath}")
+        print(f"Scaler saved to {scaler_filepath}")
+        
     def load_model(self, filepath):
         """Load model and scaler"""
-        checkpoint = torch.load(filepath, map_location=device)
+        import pickle
+        
+        # Load with weights_only=False for compatibility
+        try:
+            checkpoint = torch.load(filepath, map_location=device, weights_only=False)
+        except:
+            # Fallback for older PyTorch versions or if weights_only fails
+            checkpoint = torch.load(filepath, map_location=device)
         
         # Recreate model architecture
         input_dim = checkpoint['input_dim']
         self.model = PatternRecognitionNetwork(input_dim).to(device)
         self.model.load_state_dict(checkpoint['model_state_dict'])
         
-        self.scaler = checkpoint['scaler']
+        # Try to load scaler from checkpoint first (old format)
+        if 'scaler' in checkpoint:
+            self.scaler = checkpoint['scaler']
+        else:
+            # Load scaler from separate file (new format)
+            scaler_filepath = filepath.replace('.pth', '_scaler.pkl')
+            try:
+                with open(scaler_filepath, 'rb') as f:
+                    self.scaler = pickle.load(f)
+                print(f"Scaler loaded from {scaler_filepath}")
+            except FileNotFoundError:
+                print(f"Warning: Scaler file {scaler_filepath} not found. Creating new scaler.")
+                self.scaler = StandardScaler()
+        
         self.sequence_length = checkpoint['sequence_length']
         self.min_confidence = checkpoint['min_confidence']
+        
+        print(f"Model loaded from {filepath}")
 
 def load_forex_data(period="2y", interval="1h"):
     """Load forex data from Yahoo Finance"""
