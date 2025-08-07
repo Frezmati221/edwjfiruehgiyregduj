@@ -634,10 +634,10 @@ class ForexTradingAgent:
                     loss.backward()
                     total_loss += loss.item()
                 
-                # Clear intermediate tensors to save memory
+                # Clear intermediate tensors more efficiently
                 del states, next_states, rewards, dones, actions
-                if device.type == 'cuda':
-                    torch.cuda.empty_cache()
+                # Only clear cache after all accumulation steps, not each one
+                # This reduces overhead significantly
             
             # Apply accumulated gradients
             if self.scaler:
@@ -645,6 +645,10 @@ class ForexTradingAgent:
                 self.scaler.update()
             else:
                 self.optimizer.step()
+            
+            # Only clear cache once after all gradient steps for efficiency
+            if device.type == 'cuda':
+                torch.cuda.empty_cache()
             
         except torch.cuda.OutOfMemoryError:
             # Handle OOM gracefully by clearing cache and reducing batch size temporarily
@@ -721,27 +725,26 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         break
                     
-                    # Train more aggressively for better GPU utilization
-                    if len(agent.memory) > agent.batch_size and steps % 5 == 0:  # Train more frequently
+                    # Train more aggressively but with better efficiency
+                    if len(agent.memory) > agent.batch_size and steps % 10 == 0:  # Reduced frequency slightly
                         training_start = time.time()
-                        max_training_time = 10  # Increased timeout for larger batches
+                        max_training_time = 15  # Increased timeout for larger batches
                         
                         try:
-                            # Multiple training attempts for better learning
-                            for train_round in range(2):  # 2 training rounds per interval
-                                agent.replay()
+                            # Single but more effective training call
+                            agent.replay()  # Single call instead of loop
                                 
                             training_time = time.time() - training_start
                             
                             if training_time > max_training_time:
-                                print(f"⚠️  Training took {training_time:.1f}s - acceptable for large batches")
+                                print(f"⚠️  Training took {training_time:.1f}s - may need optimization")
                         except Exception as e:
                             print(f"⚠️  Training failed: {str(e)} - skipping training")
                             if device.type == 'cuda':
                                 torch.cuda.empty_cache()
                         
-                        # Less frequent cache clearing for better performance
-                        if steps % 100 == 0 and device.type == 'cuda':  # Reduced frequency
+                        # Much less frequent cache clearing for better performance
+                        if steps % 500 == 0 and device.type == 'cuda':  # Much reduced frequency
                             torch.cuda.empty_cache()
                     
                     # Reduce step timeout for performance - most steps should be fast
@@ -752,14 +755,14 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         # Don't break - just warn and continue
                     
-                    # Less frequent progress monitoring for better performance
-                    if steps % 100 == 0:  # Back to every 100 steps
+                    # Even less frequent progress monitoring for maximum performance
+                    if steps % 200 == 0:  # Reduced to every 200 steps
                         elapsed = time.time() - last_step_time
-                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 100 steps: {elapsed:.1f}s")
+                        print(f"    📊 Step {steps}, Reward: {total_reward:.1f}, Last 200 steps: {elapsed:.1f}s")
                         last_step_time = time.time()
                         
                         # Minimal cache management for performance
-                        if device.type == 'cuda' and steps % 200 == 0:  # Even less frequent
+                        if device.type == 'cuda' and steps % 1000 == 0:  # Much less frequent
                             torch.cuda.synchronize()
                 
                 # Update target network periodically
