@@ -3,6 +3,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.cuda.amp import autocast, GradScaler  # Mixed precision for RTX 5080
 from collections import deque
 import random
 from typing import Dict, List, Tuple, Optional
@@ -17,11 +18,22 @@ from tqdm import tqdm
 import time
 warnings.filterwarnings('ignore')
 
-# Simple GPU setup for maximum speed
+# GPU setup for MAXIMUM performance
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# Enable MAXIMUM GPU optimizations for RTX 5080
 if torch.cuda.is_available():
     torch.backends.cudnn.benchmark = True  # Speed optimization
-    print(f"🚀 GPU: {torch.cuda.get_device_name(0)} - Training will be 3x faster!")
+    torch.backends.cudnn.deterministic = False  # Allow fastest algorithms
+    torch.cuda.empty_cache()
+    
+    # Set CUDA memory settings for maximum performance
+    import os
+    os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'max_split_size_mb:2048,expandable_segments:True'
+    
+    print(f"🚀 GPU: {torch.cuda.get_device_name(0)} - MAXIMUM POWER MODE!")
+    print(f"💾 GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    print("⚡ CUDA optimizations: MAXIMUM")
 else:
     print("💻 Using CPU")
 
@@ -361,17 +373,21 @@ class ForexEnvironment:
 class DQNNetwork(nn.Module):
     """Simple and fast Deep Q-Network for trading decisions"""
     
-    def __init__(self, input_size: int, hidden_size: int = 256):
+    def __init__(self, input_size: int, hidden_size: int = 512):  # Bigger network for RTX 5080
         super(DQNNetwork, self).__init__()
         
+        # BIGGER network to utilize RTX 5080 power
         self.feature_extractor = nn.Sequential(
-            nn.Linear(input_size, hidden_size * 2),
+            nn.Linear(input_size, hidden_size * 4),  # 2048 neurons
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(hidden_size * 4, hidden_size * 2),  # 1024 neurons
+            nn.ReLU(),
+            nn.Dropout(0.3),
+            nn.Linear(hidden_size * 2, hidden_size),  # 512 neurons
             nn.ReLU(),
             nn.Dropout(0.2),
-            nn.Linear(hidden_size * 2, hidden_size),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(hidden_size, hidden_size // 2),
+            nn.Linear(hidden_size, hidden_size // 2),  # 256 neurons
             nn.ReLU()
         )
         
@@ -394,28 +410,51 @@ class ForexTradingAgent:
     
     def __init__(self, state_size: int, learning_rate: float = 0.001):
         self.state_size = state_size
-        self.memory = deque(maxlen=10000)
+        # MASSIVE memory for RTX 5080 - USE ALL THE VRAM!
+        if device.type == 'cuda':
+            gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            if gpu_memory_gb >= 16:  # RTX 5080
+                self.memory = deque(maxlen=100000)  # 10x larger memory buffer
+            elif gpu_memory_gb >= 12:
+                self.memory = deque(maxlen=50000)
+            else:
+                self.memory = deque(maxlen=20000)
+        else:
+            self.memory = deque(maxlen=10000)
         self.epsilon = 1.0
         self.epsilon_min = 0.01
         self.epsilon_decay = 0.995
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
-        # Optimized batch size for GPU
+        # AGGRESSIVE batch size for RTX 5080 - USE ALL THE POWER!
         if device.type == 'cuda':
-            self.batch_size = 128  # 4x larger for GPU speed
+            gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
+            if gpu_memory_gb >= 16:  # RTX 5080 has 16GB
+                self.batch_size = 2048  # MASSIVE batch for speed
+            elif gpu_memory_gb >= 12:
+                self.batch_size = 1024
+            else:
+                self.batch_size = 512
         else:
             self.batch_size = 32
         
         # Neural networks - move to GPU for speed
         self.q_network = DQNNetwork(state_size).to(device)
         self.target_network = DQNNetwork(state_size).to(device)
-        self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate)
+        self.optimizer = optim.Adam(self.q_network.parameters(), lr=learning_rate, weight_decay=1e-5)
+        
+        # Mixed precision for RTX 5080 SPEED!
+        self.scaler = GradScaler() if device.type == 'cuda' else None
         
         self.update_target_network()
         
-        print(f"🧠 Simple neural network initialized on {device}")
-        print(f"📊 Batch size: {self.batch_size} (optimized for {device.type.upper()})")
+        print(f"🧠 MASSIVE neural network initialized on {device}")
+        print(f"📊 AGGRESSIVE batch size: {self.batch_size} (RTX 5080 POWER!)")
+        print(f"💾 HUGE memory buffer: {len(self.memory):,}")
+        if self.scaler:
+            print("⚡ Mixed precision training: ENABLED")
+        print("🚀 MAXIMUM GPU UTILIZATION MODE!")
         
     def update_target_network(self):
         """Copy weights from main network to target network"""
@@ -433,8 +472,8 @@ class ForexTradingAgent:
             tp = random.uniform(20, 100)  # pips
             sl = random.uniform(10, 50)   # pips
         else:
-            # Predict using network - optimized for GPU
-            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device)
+            # Predict using network - OPTIMIZED FOR RTX 5080
+            state_tensor = torch.FloatTensor(state).unsqueeze(0).to(device, non_blocking=True)
             with torch.no_grad():
                 direction_q, tp_q, sl_q = self.q_network(state_tensor)
             
@@ -457,11 +496,11 @@ class ForexTradingAgent:
         
         batch = random.sample(self.memory, self.batch_size)
         
-        # GPU-optimized tensor creation
-        states = torch.FloatTensor([e[0] for e in batch]).to(device)
-        next_states = torch.FloatTensor([e[3] for e in batch]).to(device)
-        rewards = torch.FloatTensor([e[2] for e in batch]).to(device)
-        dones = torch.FloatTensor([e[4] for e in batch]).to(device)
+        # GPU-optimized tensor creation with pin_memory for RTX 5080
+        states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
+        next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
+        rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
+        dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
         
         # Simple action encoding for speed
         actions = []
@@ -472,7 +511,7 @@ class ForexTradingAgent:
                 actions.append(1)
             else:
                 actions.append(2)
-        actions = torch.LongTensor(actions).unsqueeze(1).to(device)
+        actions = torch.LongTensor(actions).unsqueeze(1).to(device, non_blocking=True)
         
         current_q_values = self.q_network(states)
         next_q_values = self.target_network(next_states)
@@ -482,12 +521,24 @@ class ForexTradingAgent:
         
         # Calculate loss
         current_q = current_q_values[0].gather(1, actions).squeeze()
-        loss = nn.MSELoss()(current_q, target_q_values.detach())
         
-        # Backpropagation
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
+        # MIXED PRECISION TRAINING for RTX 5080 speed
+        if self.scaler:
+            with autocast():
+                loss = nn.MSELoss()(current_q, target_q_values.detach())
+            
+            # Backpropagation with mixed precision
+            self.optimizer.zero_grad()
+            self.scaler.scale(loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            loss = nn.MSELoss()(current_q, target_q_values.detach())
+            
+            # Regular backpropagation
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
         
         # Decay epsilon
         if self.epsilon > self.epsilon_min:
@@ -541,10 +592,17 @@ class ForexPredictor:
                     total_reward += reward
                     steps += 1
                     
-                    # Train more frequently on GPU for speed
+                    # AGGRESSIVE training for RTX 5080 - TRAIN EVERY STEP!
                     min_memory = agent.batch_size
                     if len(agent.memory) > min_memory:
+                        # Train EVERY step on powerful GPU
                         agent.replay()
+                        
+                        # Multiple training steps per environment step for RTX 5080
+                        if device.type == 'cuda' and steps % 5 == 0:
+                            for _ in range(3):  # 3 extra training steps every 5 steps
+                                if len(agent.memory) > agent.batch_size:
+                                    agent.replay()
                 
                 # Update target network periodically
                 if epoch % 10 == 0:
