@@ -419,10 +419,6 @@ class ForexEnvironment:
             reward -= 50  # Much more conservative penalty
             done = True
         
-        # Small bonus for maintaining good balance (encourage good behavior)
-        if self.balance > self.initial_balance * 1.1:  # 10% profit
-            reward += 5  # Small bonus for profitability
-        
         return self._get_state(), reward, done
 
 class DQNNetwork(nn.Module):
