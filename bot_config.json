@@ -1,0 +1,51 @@
+{
+  "telegram": {
+    "bot_token": "YOUR_BOT_TOKEN_HERE",
+    "admin_chat_id": null,
+    "allowed_users": []
+  },
+  "trading": {
+    "default_confidence": 0.5,
+    "max_predictions_per_user": 50,
+    "cache_duration_minutes": 5,
+    "rate_limit_per_minute": 10
+  },
+  "model": {
+    "model_path": "best_model.pth",
+    "scaler_path": "best_model_scaler.pkl",
+    "sequence_length": 100,
+    "min_confidence": 0.3,
+    "max_confidence": 0.9
+  },
+  "market_data": {
+    "data_source": "yfinance",
+    "history_period": "1mo",
+    "analysis_period": "3mo",
+    "interval": "1h",
+    "forex_pairs": {
+      "EURUSD": "EURUSD=X",
+      "GBPUSD": "GBPUSD=X", 
+      "USDJPY": "USDJPY=X",
+      "AUDUSD": "AUDUSD=X",
+      "USDCAD": "USDCAD=X",
+      "USDCHF": "USDCHF=X",
+      "EURJPY": "EURJPY=X",
+      "GBPJPY": "GBPJPY=X",
+      "EURGBP": "EURGBP=X",
+      "AUDCAD": "AUDCAD=X"
+    }
+  },
+  "features": {
+    "enable_notifications": true,
+    "enable_favorites": true,
+    "enable_alerts": true,
+    "max_favorite_pairs": 5,
+    "alert_confidence_threshold": 0.7
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "telegram_bot.log",
+    "max_size_mb": 10,
+    "backup_count": 3
+  }
+}
