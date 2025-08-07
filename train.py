@@ -466,9 +466,9 @@ class ForexTradingAgent:
     
     def __init__(self, state_size: int, learning_rate: float = 0.001):
         self.state_size = state_size
-        self.epsilon = 1.0
-        self.epsilon_min = 0.05  # Higher minimum to maintain exploration
-        self.epsilon_decay = 0.998  # Slower decay for more stable learning
+        self.epsilon = 0.9  # Start with lower epsilon to begin learning sooner
+        self.epsilon_min = 0.1  # Higher minimum to maintain exploration
+        self.epsilon_decay = 0.995  # Balanced decay rate
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
@@ -670,9 +670,7 @@ class ForexTradingAgent:
             if device.type == 'cuda':
                 torch.cuda.empty_cache()
         
-        # Decay epsilon
-        if self.epsilon > self.epsilon_min:
-            self.epsilon *= self.epsilon_decay
+        # Epsilon decay is now handled in the training loop for better control
 
 class ForexPredictor:
     """Main class for forex prediction"""
@@ -704,7 +702,7 @@ class ForexPredictor:
             pbar = tqdm(range(epochs), desc=f"🔄 {pair}", 
                        bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} epochs [⏱️{elapsed}<⏳{remaining}, 💰{postfix}]')
             
-            best_reward = float('-inf')
+            best_reward = -10000  # Start with reasonable negative value instead of -inf
             rewards_history = []
             
             for epoch in pbar:
@@ -714,6 +712,11 @@ class ForexPredictor:
                 done = False
                 steps = 0
                 last_step_time = start_time
+                
+                # Add periodic exploration boost to escape local minima
+                if epoch % 50 == 0 and epoch > 0:
+                    agent.epsilon = min(0.7, agent.epsilon + 0.3)  # Boost exploration
+                    print(f"\n    🔍 Exploration boost at epoch {epoch}, epsilon increased to {agent.epsilon:.3f}")
                 
                 while not done:
                     step_start_time = time.time()
@@ -731,24 +734,30 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         break
                     
-                    # Optimize training for better stability and performance
-                    # More conservative training approach to prevent negative spirals
-                    min_training_memory = agent.batch_size * 4  # Larger buffer for more stable learning
+                    # Optimize training for better learning and stability
+                    # Allow earlier training to enable learning
+                    min_training_memory = agent.batch_size * 2  # Smaller buffer to start learning sooner
                     
                     if len(agent.memory) > min_training_memory:
-                        # More conservative training frequency for stability
-                        training_frequency = 25  # Train every 25 steps for more stable learning
+                        # More frequent training for better learning
+                        training_frequency = 15  # Train every 15 steps for better learning
                         
                         if steps % training_frequency == 0:
                             training_start = time.time()
                             max_training_time = 5  # Shorter timeout to prevent slowdowns
                             
                             try:
-                                # Only train if recent performance isn't terrible
-                                if total_reward > -1000:  # Don't train when performance is very poor
+                                # ALWAYS train to enable learning - more conservative approach
+                                if total_reward > -2000:  # Much more lenient threshold
                                     agent.replay()
+                                    # Epsilon decay happens after successful training
+                                    if agent.epsilon > agent.epsilon_min:
+                                        agent.epsilon *= agent.epsilon_decay
                                 else:
-                                    print(f"    🚫 Skipping training due to poor performance (reward: {total_reward:.1f})")
+                                    print(f"    🚫 Skipping training due to extremely poor performance (reward: {total_reward:.1f})")
+                                    # Still decay epsilon even when not training to enable exploration->exploitation
+                                    if agent.epsilon > agent.epsilon_min:
+                                        agent.epsilon *= 0.999  # Slower decay when not training
                                     
                                 training_time = time.time() - training_start
                                 
@@ -762,6 +771,9 @@ class ForexPredictor:
                                 print(f"⚠️  Training failed: {str(e)} - clearing cache and continuing")
                                 if device.type == 'cuda':
                                     torch.cuda.empty_cache()
+                                # Decay epsilon even on training failure
+                                if agent.epsilon > agent.epsilon_min:
+                                    agent.epsilon *= 0.999
                         
                         # More frequent cache management to prevent memory buildup
                         if steps % 1000 == 0 and device.type == 'cuda':  # More frequent clearing
@@ -799,8 +811,8 @@ class ForexPredictor:
                 if epoch % 10 == 0:
                     agent.update_target_network()
                 
-                # Improved early stopping with complete reset (prevent spiraling)
-                if total_reward < -1500:  # Much more aggressive early stopping
+                # More balanced early stopping (allow more learning before reset)
+                if total_reward < -10000:  # Much more lenient threshold to allow learning
                     print(f"\n⚠️  Early stopping due to poor performance (reward: {total_reward:.1f})")
                     print("    🔄 Complete environment and agent reset...")
                     # Complete reset to prevent cascading failures
