@@ -1,0 +1,29 @@
+{
+  "initial_balance": 10000,
+  "demo_mode": true,
+  "position_size_pct": 0.02,
+  "max_daily_risk": 0.06,
+  "max_positions": 3,
+  "update_interval": 60,
+  "pairs": ["EURUSD=X", "GBPUSD=X", "USDJPY=X"],
+  "signal_threshold": 0.070,
+  "confidence_threshold": 0.640,
+  "reward_threshold": -0.090,
+  "stop_loss_pct": 0.01,
+  "take_profit_pct": 0.02,
+  "risk_management": {
+    "max_drawdown": 0.20,
+    "max_consecutive_losses": 5,
+    "daily_loss_limit": 0.06
+  },
+  "enhanced_models": {
+    "use_enhanced": true,
+    "model_path": "enhanced_models/",
+    "model_suffix": "_enhanced_loss_learning.pkl"
+  },
+  "logging": {
+    "log_level": "INFO",
+    "log_file": "enhanced_live_trading.log",
+    "console_output": true
+  }
+}

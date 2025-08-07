@@ -1,0 +1,22 @@
+{
+  "bot_token": "8276493068:AAEXJXoOsG0jmXn6BIp5ikf-ZzW8nG0_gzk",
+  "authorized_users": [
+    755020990
+  ],
+  "notifications": {
+    "enabled": true,
+    "periodic_updates": true,
+    "update_interval_hours": 1,
+    "trade_notifications": true,
+    "error_notifications": true
+  },
+  "security": {
+    "require_authorization": true,
+    "log_unauthorized_attempts": true
+  },
+  "features": {
+    "auto_start_trading": false,
+    "show_detailed_positions": true,
+    "show_trade_history_count": 5
+  }
+}

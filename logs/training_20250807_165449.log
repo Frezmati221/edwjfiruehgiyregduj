@@ -1,0 +1,56 @@
+2025-08-07 16:54:49,983 - INFO - 📈 Loading forex data...
+2025-08-07 16:54:52,640 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 16:54:52,640 - INFO -    • USDJPY: 6146 data points (2024-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:54:52,640 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 16:54:52,640 - INFO - 🎯 Starting full training process...
+2025-08-07 16:54:52,640 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 16:54:52,640 - INFO -    Training split: 80.0%
+2025-08-07 16:54:52,640 - INFO -    Testing split: 20.0%
+2025-08-07 16:54:52,641 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 16:54:52,641 - INFO -    📊 USDJPY data split:
+2025-08-07 16:54:52,641 - INFO -       Training: 4916 samples (2024-08-07 15:00:00+01:00 to 2025-05-27 14:00:00+01:00)
+2025-08-07 16:54:52,641 - INFO -       Testing:  1230 samples (2025-05-27 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:54:52,651 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 16:54:52,651 - INFO -    ✅ Environment initialized. State size: 20
+2025-08-07 16:54:53,277 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:54:53,277 - INFO -    🚀 Starting training for USDJPY (100 epochs)...
+2025-08-07 16:55:02,626 - INFO - 
+    USDJPY Epoch 20 - Return: -14.62%, Sharpe: 0.89, Trades: 969
+2025-08-07 16:55:12,127 - INFO - 
+    USDJPY Epoch 40 - Return: 14431.43%, Sharpe: 2.11, Trades: 983
+2025-08-07 16:55:21,631 - INFO - 
+    USDJPY Epoch 60 - Return: 5.89%, Sharpe: 1.01, Trades: 981
+2025-08-07 16:55:31,313 - INFO - 
+    USDJPY Epoch 80 - Return: 123.39%, Sharpe: 1.22, Trades: 979
+2025-08-07 16:55:40,758 - INFO - 🧪 Testing USDJPY on UNSEEN data...
+2025-08-07 16:55:41,551 - INFO - ✅ USDJPY training completed!
+2025-08-07 16:55:41,552 - INFO -    📊 TRAINING metrics - Return: 92732.74%, Sharpe: 2.46, Win Rate: 25.4%
+2025-08-07 16:55:41,552 - INFO -    🧪 TESTING metrics  - Return: -71.13%, Sharpe: 0.54, Win Rate: 25.7%
+2025-08-07 16:55:41,552 - WARNING -    🚨 OVERFITTING DETECTED for USDJPY!
+2025-08-07 16:55:41,552 - WARNING -       Training Sharpe: 2.46
+2025-08-07 16:55:41,552 - WARNING -       Testing Sharpe: 0.54
+2025-08-07 16:55:41,552 - WARNING -       Difference: 1.93 (>1.0 indicates overfitting)
+2025-08-07 16:55:41,552 - INFO - 
+================================================================================
+2025-08-07 16:55:41,552 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 16:55:41,552 - INFO - ================================================================================
+2025-08-07 16:55:41,552 - INFO - USDJPY:
+2025-08-07 16:55:41,552 - INFO -   📈 Training Return: 92732.74% | Testing Return: -71.13%
+2025-08-07 16:55:41,552 - INFO -   📊 Training Sharpe: 2.46 | Testing Sharpe: 0.54
+2025-08-07 16:55:41,552 - INFO -   🎯 Training WinRate: 25.4% | Testing WinRate: 25.7%
+2025-08-07 16:55:41,552 - INFO -   📉 Training MaxDD: 82.7% | Testing MaxDD: 95.8%
+2025-08-07 16:55:41,552 - INFO -   🔍 Overfitting Score: 1.93
+2025-08-07 16:55:41,552 - INFO - 
+2025-08-07 16:55:41,552 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 16:55:41,553 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 16:55:41,553 - ERROR -    Recommendations:
+2025-08-07 16:55:41,553 - ERROR -    • Reduce model complexity
+2025-08-07 16:55:41,553 - ERROR -    • Increase training data
+2025-08-07 16:55:41,553 - ERROR -    • Add more regularization
+2025-08-07 16:55:41,553 - ERROR -    • Use simpler indicators
+2025-08-07 16:55:41,568 - INFO - Model saved to models/forex_model_20250807_165541.pkl
+2025-08-07 16:55:41,568 - INFO - Validation results saved to models/forex_model_20250807_165541_validation.json
+2025-08-07 16:55:41,568 - INFO - ================================================================================
+2025-08-07 16:55:41,568 - INFO - 🧪 Testing production model...
+2025-08-07 16:55:41,576 - ERROR -    • USDJPY: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 16:55:41,576 - INFO - Production-grade Forex AI training session ended.

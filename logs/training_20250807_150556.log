@@ -1,0 +1,18 @@
+2025-08-07 15:05:56,501 - INFO - 📈 Loading forex data...
+2025-08-07 15:06:01,183 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:06:01,183 - INFO -    • EURUSD: 12383 data points (2023-08-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:06:01,183 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 15:06:01,183 - INFO - 🎯 Starting full training process...
+2025-08-07 15:06:01,183 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:06:01,183 - INFO -    Training split: 80.0%
+2025-08-07 15:06:01,183 - INFO -    Testing split: 20.0%
+2025-08-07 15:06:01,183 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 15:06:01,183 - INFO -    📊 EURUSD data split:
+2025-08-07 15:06:01,183 - INFO -       Training: 9906 samples (2023-08-07 14:00:00+01:00 to 2025-03-14 09:00:00+00:00)
+2025-08-07 15:06:01,183 - INFO -       Testing:  2477 samples (2025-03-14 10:00:00+00:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:06:01,203 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 15:06:01,206 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:06:02,084 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:06:02,084 - INFO -    🚀 Starting training for EURUSD (100 epochs)...
+2025-08-07 15:06:02,097 - ERROR - ❌ Error during training: name 'pips_gained' is not defined
+2025-08-07 15:06:02,102 - INFO - Production-grade Forex AI training session ended.

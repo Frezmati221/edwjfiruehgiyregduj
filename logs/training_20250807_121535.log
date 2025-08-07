@@ -1,0 +1,10 @@
+2025-08-07 12:15:35,110 - INFO - 📈 Loading forex data...
+2025-08-07 12:15:38,028 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 12:15:38,028 - INFO -    • EURUSD: 3068 data points (2025-02-07 11:00:00+00:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:15:38,029 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 12:15:38,029 - INFO - 🎯 Starting validation-only process...
+2025-08-07 12:15:38,029 - INFO - Starting walk-forward optimization...
+2025-08-07 12:15:38,029 - INFO - Walk-forward optimization for EURUSD
+2025-08-07 12:15:38,029 - INFO - Training window: 0-500, Test: 500-600
+2025-08-07 12:15:38,058 - ERROR - ❌ Error during training: setting an array element with a sequence. The requested array has an inhomogeneous shape after 1 dimensions. The detected shape was (29,) + inhomogeneous part.
+2025-08-07 12:15:38,058 - INFO - Production-grade Forex AI training session ended.

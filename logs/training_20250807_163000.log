@@ -1,0 +1,113 @@
+2025-08-07 16:30:00,681 - INFO - 📈 Loading forex data...
+2025-08-07 16:30:05,214 - INFO - ✅ Data loaded successfully for 3 pairs
+2025-08-07 16:30:05,215 - INFO -    • EURUSD: 12383 data points (2023-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:30:05,216 - INFO -    • GBPUSD: 12383 data points (2023-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:30:05,216 - INFO -    • USDJPY: 12317 data points (2023-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:30:05,216 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD', 'GBPUSD', 'USDJPY']
+2025-08-07 16:30:05,216 - INFO - 🎯 Starting full training process...
+2025-08-07 16:30:05,217 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 16:30:05,217 - INFO -    Training split: 80.0%
+2025-08-07 16:30:05,217 - INFO -    Testing split: 20.0%
+2025-08-07 16:30:05,217 - INFO - Training EURUSD (1/3) with proper data split...
+2025-08-07 16:30:05,217 - INFO -    📊 EURUSD data split:
+2025-08-07 16:30:05,217 - INFO -       Training: 9906 samples (2023-08-07 15:00:00+01:00 to 2025-03-14 10:00:00+00:00)
+2025-08-07 16:30:05,217 - INFO -       Testing:  2477 samples (2025-03-14 11:00:00+00:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:30:05,234 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 16:30:05,234 - INFO -    ✅ Environment initialized. State size: 50
+2025-08-07 16:30:05,880 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:30:05,880 - INFO -    🚀 Starting training for EURUSD (100 epochs)...
+2025-08-07 16:30:15,912 - INFO - 
+    EURUSD Epoch 20 - Return: -0.03%, Sharpe: -435.48, Trades: 971
+2025-08-07 16:30:27,006 - INFO - 
+    EURUSD Epoch 40 - Return: -0.03%, Sharpe: -427.55, Trades: 971
+2025-08-07 16:30:39,304 - INFO - 
+    EURUSD Epoch 60 - Return: -0.07%, Sharpe: -457.16, Trades: 983
+2025-08-07 16:30:51,851 - INFO - 
+    EURUSD Epoch 80 - Return: -0.03%, Sharpe: -376.97, Trades: 982
+2025-08-07 16:31:03,917 - INFO - 🧪 Testing EURUSD on UNSEEN data...
+2025-08-07 16:31:05,603 - INFO - ✅ EURUSD training completed!
+2025-08-07 16:31:05,603 - INFO -    📊 TRAINING metrics - Return: 0.00%, Sharpe: -364.52, Win Rate: 23.3%
+2025-08-07 16:31:05,603 - INFO -    🧪 TESTING metrics  - Return: -0.15%, Sharpe: -323.74, Win Rate: 23.4%
+2025-08-07 16:31:05,603 - INFO -    ✅ Good generalization for EURUSD (difference: -40.78)
+2025-08-07 16:31:05,603 - INFO - Training GBPUSD (2/3) with proper data split...
+2025-08-07 16:31:05,603 - INFO -    📊 GBPUSD data split:
+2025-08-07 16:31:05,604 - INFO -       Training: 9906 samples (2023-08-07 15:00:00+01:00 to 2025-03-14 10:00:00+00:00)
+2025-08-07 16:31:05,604 - INFO -       Testing:  2477 samples (2025-03-14 11:00:00+00:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:31:05,620 - INFO -    🔧 Initializing environment and agent for GBPUSD...
+2025-08-07 16:31:05,638 - INFO -    ✅ Environment initialized. State size: 50
+2025-08-07 16:31:05,640 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:31:05,640 - INFO -    🚀 Starting training for GBPUSD (100 epochs)...
+2025-08-07 16:31:16,405 - INFO - 
+    GBPUSD Epoch 20 - Return: -0.04%, Sharpe: -332.05, Trades: 981
+2025-08-07 16:31:27,962 - INFO - 
+    GBPUSD Epoch 40 - Return: -0.05%, Sharpe: -357.41, Trades: 973
+2025-08-07 16:31:40,132 - INFO - 
+    GBPUSD Epoch 60 - Return: -0.02%, Sharpe: -352.73, Trades: 989
+2025-08-07 16:31:52,893 - INFO - 
+    GBPUSD Epoch 80 - Return: 0.01%, Sharpe: -331.62, Trades: 979
+2025-08-07 16:32:04,909 - INFO - 🧪 Testing GBPUSD on UNSEEN data...
+2025-08-07 16:32:06,559 - INFO - ✅ GBPUSD training completed!
+2025-08-07 16:32:06,559 - INFO -    📊 TRAINING metrics - Return: 0.01%, Sharpe: -294.33, Win Rate: 22.9%
+2025-08-07 16:32:06,559 - INFO -    🧪 TESTING metrics  - Return: -0.09%, Sharpe: -322.45, Win Rate: 22.7%
+2025-08-07 16:32:06,559 - WARNING -    🚨 OVERFITTING DETECTED for GBPUSD!
+2025-08-07 16:32:06,559 - WARNING -       Training Sharpe: -294.33
+2025-08-07 16:32:06,559 - WARNING -       Testing Sharpe: -322.45
+2025-08-07 16:32:06,559 - WARNING -       Difference: 28.12 (>1.0 indicates overfitting)
+2025-08-07 16:32:06,559 - INFO - Training USDJPY (3/3) with proper data split...
+2025-08-07 16:32:06,560 - INFO -    📊 USDJPY data split:
+2025-08-07 16:32:06,560 - INFO -       Training: 9853 samples (2023-08-07 15:00:00+01:00 to 2025-03-14 09:00:00+00:00)
+2025-08-07 16:32:06,560 - INFO -       Testing:  2464 samples (2025-03-14 10:00:00+00:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:32:06,579 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 16:32:06,598 - INFO -    ✅ Environment initialized. State size: 50
+2025-08-07 16:32:06,600 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:32:06,600 - INFO -    🚀 Starting training for USDJPY (100 epochs)...
+2025-08-07 16:32:17,433 - INFO - 
+    USDJPY Epoch 20 - Return: -92.80%, Sharpe: -0.57, Trades: 592
+2025-08-07 16:32:29,083 - INFO - 
+    USDJPY Epoch 40 - Return: -94.28%, Sharpe: -0.92, Trades: 434
+2025-08-07 16:32:41,413 - INFO - 
+    USDJPY Epoch 60 - Return: 625.02%, Sharpe: 1.34, Trades: 973
+2025-08-07 16:32:54,079 - INFO - 
+    USDJPY Epoch 80 - Return: 545.22%, Sharpe: 1.31, Trades: 985
+2025-08-07 16:33:06,928 - INFO - 🧪 Testing USDJPY on UNSEEN data...
+2025-08-07 16:33:08,326 - INFO - ✅ USDJPY training completed!
+2025-08-07 16:33:08,326 - INFO -    📊 TRAINING metrics - Return: 3973.75%, Sharpe: 1.88, Win Rate: 25.6%
+2025-08-07 16:33:08,326 - INFO -    🧪 TESTING metrics  - Return: -1.10%, Sharpe: 0.38, Win Rate: 24.5%
+2025-08-07 16:33:08,326 - WARNING -    🚨 OVERFITTING DETECTED for USDJPY!
+2025-08-07 16:33:08,326 - WARNING -       Training Sharpe: 1.88
+2025-08-07 16:33:08,326 - WARNING -       Testing Sharpe: 0.38
+2025-08-07 16:33:08,326 - WARNING -       Difference: 1.51 (>1.0 indicates overfitting)
+2025-08-07 16:33:08,326 - INFO - 
+================================================================================
+2025-08-07 16:33:08,326 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 16:33:08,326 - INFO - ================================================================================
+2025-08-07 16:33:08,326 - INFO - EURUSD:
+2025-08-07 16:33:08,326 - INFO -   📈 Training Return: 0.00% | Testing Return: -0.15%
+2025-08-07 16:33:08,327 - INFO -   📊 Training Sharpe: -364.52 | Testing Sharpe: -323.74
+2025-08-07 16:33:08,327 - INFO -   🎯 Training WinRate: 23.3% | Testing WinRate: 23.4%
+2025-08-07 16:33:08,327 - INFO -   📉 Training MaxDD: 0.0% | Testing MaxDD: 0.2%
+2025-08-07 16:33:08,327 - INFO -   🔍 Overfitting Score: -40.78
+2025-08-07 16:33:08,327 - INFO - 
+2025-08-07 16:33:08,327 - INFO - GBPUSD:
+2025-08-07 16:33:08,327 - INFO -   📈 Training Return: 0.01% | Testing Return: -0.09%
+2025-08-07 16:33:08,327 - INFO -   📊 Training Sharpe: -294.33 | Testing Sharpe: -322.45
+2025-08-07 16:33:08,327 - INFO -   🎯 Training WinRate: 22.9% | Testing WinRate: 22.7%
+2025-08-07 16:33:08,327 - INFO -   📉 Training MaxDD: 0.0% | Testing MaxDD: 0.1%
+2025-08-07 16:33:08,327 - INFO -   🔍 Overfitting Score: 28.12
+2025-08-07 16:33:08,327 - INFO - 
+2025-08-07 16:33:08,327 - INFO - USDJPY:
+2025-08-07 16:33:08,327 - INFO -   📈 Training Return: 3973.75% | Testing Return: -1.10%
+2025-08-07 16:33:08,327 - INFO -   📊 Training Sharpe: 1.88 | Testing Sharpe: 0.38
+2025-08-07 16:33:08,327 - INFO -   🎯 Training WinRate: 25.6% | Testing WinRate: 24.5%
+2025-08-07 16:33:08,327 - INFO -   📉 Training MaxDD: 66.2% | Testing MaxDD: 95.6%
+2025-08-07 16:33:08,327 - INFO -   🔍 Overfitting Score: 1.51
+2025-08-07 16:33:08,327 - INFO - 
+2025-08-07 16:33:08,327 - INFO - ✅ Good generalization across all pairs!
+2025-08-07 16:33:08,351 - INFO - Model saved to models/forex_model_20250807_163308.pkl
+2025-08-07 16:33:08,351 - INFO - Validation results saved to models/forex_model_20250807_163308_validation.json
+2025-08-07 16:33:08,351 - INFO - ================================================================================
+2025-08-07 16:33:08,351 - INFO - 🧪 Testing production model...
+2025-08-07 16:33:08,360 - ERROR -    • EURUSD: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 16:33:08,368 - ERROR -    • GBPUSD: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 16:33:08,377 - ERROR -    • USDJPY: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 16:33:08,377 - INFO - Production-grade Forex AI training session ended.

@@ -1,0 +1,56 @@
+2025-08-07 17:38:38,221 - INFO - 📈 Loading forex data...
+2025-08-07 17:38:40,656 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 17:38:40,656 - INFO -    • EURUSD: 3068 data points (2025-02-07 16:00:00+00:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:38:40,656 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 17:38:40,656 - INFO - 🎯 Starting full training process...
+2025-08-07 17:38:40,656 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 17:38:40,656 - INFO -    Training split: 80.0%
+2025-08-07 17:38:40,656 - INFO -    Testing split: 20.0%
+2025-08-07 17:38:40,656 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 17:38:40,656 - INFO -    📊 EURUSD data split:
+2025-08-07 17:38:40,656 - INFO -       Training: 2454 samples (2025-02-07 16:00:00+00:00 to 2025-07-02 21:00:00+01:00)
+2025-08-07 17:38:40,656 - INFO -       Testing:  614 samples (2025-07-02 22:00:00+01:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:38:40,666 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 17:38:40,666 - INFO -    ✅ Environment initialized. State size: 30
+2025-08-07 17:38:41,271 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 17:38:41,271 - INFO -    🚀 Starting training for EURUSD (100 epochs)...
+2025-08-07 17:38:53,999 - INFO - 
+    EURUSD Epoch 20 - Return: -0.03%, Sharpe: -394.92, Trades: 781
+2025-08-07 17:39:07,296 - INFO - 
+    EURUSD Epoch 40 - Return: -0.02%, Sharpe: -310.81, Trades: 849
+2025-08-07 17:39:21,660 - INFO - 
+    EURUSD Epoch 60 - Return: 0.03%, Sharpe: -289.06, Trades: 907
+2025-08-07 17:39:36,759 - INFO - 
+    EURUSD Epoch 80 - Return: -0.03%, Sharpe: -331.87, Trades: 919
+2025-08-07 17:39:51,799 - INFO - 🧪 Testing EURUSD on UNSEEN data...
+2025-08-07 17:39:52,461 - INFO - ✅ EURUSD training completed!
+2025-08-07 17:39:52,461 - INFO -    📊 TRAINING metrics - Return: 0.02%, Sharpe: -244.36, Win Rate: 24.3%
+2025-08-07 17:39:52,461 - INFO -    🧪 TESTING metrics  - Return: 0.06%, Sharpe: -259.39, Win Rate: 22.6%
+2025-08-07 17:39:52,461 - WARNING -    🚨 OVERFITTING DETECTED for EURUSD!
+2025-08-07 17:39:52,461 - WARNING -       Training Sharpe: -244.36
+2025-08-07 17:39:52,461 - WARNING -       Testing Sharpe: -259.39
+2025-08-07 17:39:52,461 - WARNING -       Difference: 15.03 (>1.0 indicates overfitting)
+2025-08-07 17:39:52,461 - INFO - 
+================================================================================
+2025-08-07 17:39:52,461 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 17:39:52,461 - INFO - ================================================================================
+2025-08-07 17:39:52,461 - INFO - EURUSD:
+2025-08-07 17:39:52,461 - INFO -   📈 Training Return: 0.02% | Testing Return: 0.06%
+2025-08-07 17:39:52,461 - INFO -   📊 Training Sharpe: -244.36 | Testing Sharpe: -259.39
+2025-08-07 17:39:52,461 - INFO -   🎯 Training WinRate: 24.3% | Testing WinRate: 22.6%
+2025-08-07 17:39:52,461 - INFO -   📉 Training MaxDD: 0.0% | Testing MaxDD: 0.0%
+2025-08-07 17:39:52,461 - INFO -   🔍 Overfitting Score: 15.03
+2025-08-07 17:39:52,461 - INFO - 
+2025-08-07 17:39:52,461 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 17:39:52,461 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 17:39:52,461 - ERROR -    Recommendations:
+2025-08-07 17:39:52,462 - ERROR -    • Reduce model complexity
+2025-08-07 17:39:52,462 - ERROR -    • Increase training data
+2025-08-07 17:39:52,462 - ERROR -    • Add more regularization
+2025-08-07 17:39:52,462 - ERROR -    • Use simpler indicators
+2025-08-07 17:39:52,479 - INFO - Model saved to models/forex_model_20250807_173952.pkl
+2025-08-07 17:39:52,479 - INFO - Validation results saved to models/forex_model_20250807_173952_validation.json
+2025-08-07 17:39:52,480 - INFO - ================================================================================
+2025-08-07 17:39:52,480 - INFO - 🧪 Testing production model...
+2025-08-07 17:39:52,488 - ERROR -    • EURUSD: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 17:39:52,488 - INFO - Production-grade Forex AI training session ended.

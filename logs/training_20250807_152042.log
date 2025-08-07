@@ -1,0 +1,4 @@
+2025-08-07 15:20:42,782 - INFO - 📈 Loading forex data...
+2025-08-07 15:20:46,258 - ERROR - $USDJPY=X: possibly delisted; no price data found  (period=2y)
+2025-08-07 15:20:49,408 - ERROR - ❌ None of the requested pairs ['JPYUSD'] are available.
+2025-08-07 15:20:49,409 - INFO - Available pairs: ['EURUSD', 'GBPUSD', 'USDCHF', 'AUDUSD', 'USDCAD']

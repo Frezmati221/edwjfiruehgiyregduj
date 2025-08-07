@@ -1,0 +1,21 @@
+2025-08-07 15:10:11,364 - INFO - 📈 Loading forex data...
+2025-08-07 15:10:15,807 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:10:15,808 - INFO -    • EURUSD: 12383 data points (2023-08-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:10:15,808 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 15:10:15,808 - INFO - 🎯 Starting full training process...
+2025-08-07 15:10:15,808 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:10:15,808 - INFO -    Training split: 80.0%
+2025-08-07 15:10:15,808 - INFO -    Testing split: 20.0%
+2025-08-07 15:10:15,808 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 15:10:15,809 - INFO -    📊 EURUSD data split:
+2025-08-07 15:10:15,809 - INFO -       Training: 9906 samples (2023-08-07 14:00:00+01:00 to 2025-03-14 09:00:00+00:00)
+2025-08-07 15:10:15,809 - INFO -       Testing:  2477 samples (2025-03-14 10:00:00+00:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:10:15,831 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 15:10:15,834 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:10:16,650 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:10:16,650 - INFO -    🚀 Starting training for EURUSD (5 epochs)...
+2025-08-07 15:10:21,296 - WARNING - ⚠️ Error in epoch 0 for EURUSD: operands could not be broadcast together with shapes (4,) (3,) 
+2025-08-07 15:10:40,704 - WARNING - ⚠️ Error in epoch 4 for EURUSD: operands could not be broadcast together with shapes (4,) (3,) 
+2025-08-07 15:10:40,705 - INFO - 🧪 Testing EURUSD on UNSEEN data...
+2025-08-07 15:10:53,083 - ERROR - ❌ Error during training: operands could not be broadcast together with shapes (8,) (7,) 
+2025-08-07 15:10:53,094 - INFO - Production-grade Forex AI training session ended.

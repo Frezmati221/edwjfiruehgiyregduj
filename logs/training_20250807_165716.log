@@ -1,0 +1,24 @@
+2025-08-07 16:57:16,368 - INFO - 📈 Loading forex data...
+2025-08-07 16:57:17,753 - ERROR - $EURUSD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042637 and endTime=1754578637. The requested range must be within the last 60 days.")
+2025-08-07 16:57:18,116 - ERROR - $GBPUSD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042638 and endTime=1754578638. The requested range must be within the last 60 days.")
+2025-08-07 16:57:18,420 - ERROR - $USDJPY=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042638 and endTime=1754578638. The requested range must be within the last 60 days.")
+2025-08-07 16:57:18,765 - ERROR - $USDCHF=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042638 and endTime=1754578638. The requested range must be within the last 60 days.")
+2025-08-07 16:57:18,882 - ERROR - $AUDUSD=X: possibly delisted; no price data found  (period=1y)
+2025-08-07 16:57:19,240 - ERROR - $USDCAD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042639 and endTime=1754578639. The requested range must be within the last 60 days.")
+2025-08-07 16:57:19,267 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 16:57:19,267 - INFO -    • USDJPY: 999 data points (0 to 998)
+2025-08-07 16:57:19,268 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 16:57:19,268 - INFO - 🎯 Starting full training process...
+2025-08-07 16:57:19,268 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 16:57:19,268 - INFO -    Training split: 80.0%
+2025-08-07 16:57:19,268 - INFO -    Testing split: 20.0%
+2025-08-07 16:57:19,268 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 16:57:19,268 - INFO -    📊 USDJPY data split:
+2025-08-07 16:57:19,268 - INFO -       Training: 799 samples (0 to 798)
+2025-08-07 16:57:19,268 - INFO -       Testing:  200 samples (799 to 998)
+2025-08-07 16:57:19,277 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 16:57:19,278 - INFO -    ✅ Environment initialized. State size: 20
+2025-08-07 16:57:19,812 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:57:19,812 - INFO -    🚀 Starting training for USDJPY (100 epochs)...
+2025-08-07 16:57:21,612 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 16:57:21,614 - INFO - Production-grade Forex AI training session ended.

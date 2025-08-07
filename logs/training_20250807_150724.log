@@ -1,0 +1,25 @@
+2025-08-07 15:07:24,092 - INFO - 📈 Loading forex data...
+2025-08-07 15:07:27,865 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:07:27,865 - INFO -    • EURUSD: 12383 data points (2023-08-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:07:27,865 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 15:07:27,865 - INFO - 🎯 Starting full training process...
+2025-08-07 15:07:27,865 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:07:27,865 - INFO -    Training split: 80.0%
+2025-08-07 15:07:27,865 - INFO -    Testing split: 20.0%
+2025-08-07 15:07:27,865 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 15:07:27,866 - INFO -    📊 EURUSD data split:
+2025-08-07 15:07:27,867 - INFO -       Training: 9906 samples (2023-08-07 14:00:00+01:00 to 2025-03-14 09:00:00+00:00)
+2025-08-07 15:07:27,867 - INFO -       Testing:  2477 samples (2025-03-14 10:00:00+00:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:07:27,890 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 15:07:27,894 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:07:28,721 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:07:28,721 - INFO -    🚀 Starting training for EURUSD (100 epochs)...
+2025-08-07 15:07:42,223 - WARNING - ⚠️ Error in epoch 2 for EURUSD: operands could not be broadcast together with shapes (4,) (3,) 
+2025-08-07 15:07:46,688 - WARNING - ⚠️ Error in epoch 3 for EURUSD: operands could not be broadcast together with shapes (10,) (9,) 
+2025-08-07 15:07:51,106 - WARNING - ⚠️ Error in epoch 4 for EURUSD: operands could not be broadcast together with shapes (10,) (9,) 
+2025-08-07 15:07:56,119 - WARNING - ⚠️ Error in epoch 5 for EURUSD: operands could not be broadcast together with shapes (6,) (5,) 
+2025-08-07 15:08:01,027 - WARNING - ⚠️ Error in epoch 6 for EURUSD: operands could not be broadcast together with shapes (4,) (3,) 
+2025-08-07 15:09:11,765 - INFO - 
+    EURUSD Epoch 20 - Return: 0.00%, Sharpe: 0.00, Trades: 0
+2025-08-07 15:09:15,605 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 15:09:15,620 - INFO - Production-grade Forex AI training session ended.

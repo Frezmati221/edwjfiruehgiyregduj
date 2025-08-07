@@ -1,0 +1,20 @@
+2025-08-07 15:30:59,554 - INFO - 📈 Loading forex data...
+2025-08-07 15:31:11,247 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:31:11,248 - INFO -    • USDJPY: 6146 data points (2024-08-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:31:11,248 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 15:31:11,248 - INFO - 🎯 Starting full training process...
+2025-08-07 15:31:11,248 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:31:11,248 - INFO -    Training split: 80.0%
+2025-08-07 15:31:11,248 - INFO -    Testing split: 20.0%
+2025-08-07 15:31:11,248 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 15:31:11,248 - INFO -    📊 USDJPY data split:
+2025-08-07 15:31:11,248 - INFO -       Training: 4916 samples (2024-08-07 14:00:00+01:00 to 2025-05-27 13:00:00+01:00)
+2025-08-07 15:31:11,248 - INFO -       Testing:  1230 samples (2025-05-27 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:31:11,259 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 15:31:11,263 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:31:11,805 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:31:11,805 - INFO -    🚀 Starting training for USDJPY (50 epochs)...
+2025-08-07 15:32:19,922 - INFO - 
+    USDJPY Epoch 20 - Return: -57.68%, Sharpe: 0.69, Trades: 854
+2025-08-07 15:32:35,493 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 15:32:35,503 - INFO - Production-grade Forex AI training session ended.

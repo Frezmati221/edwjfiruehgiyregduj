@@ -1,0 +1,18 @@
+2025-08-07 16:03:36,527 - INFO - 📈 Loading forex data...
+2025-08-07 16:03:40,949 - INFO - ✅ Data loaded successfully for 3 pairs
+2025-08-07 16:03:40,949 - INFO -    • EURUSD: 12383 data points (2023-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:03:40,949 - INFO -    • GBPUSD: 12383 data points (2023-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:03:40,949 - INFO -    • USDJPY: 12317 data points (2023-08-07 15:00:00+01:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:03:40,949 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD', 'GBPUSD', 'USDJPY']
+2025-08-07 16:03:40,950 - INFO - 🎯 Starting full training process...
+2025-08-07 16:03:40,950 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 16:03:40,950 - INFO -    Training split: 80.0%
+2025-08-07 16:03:40,950 - INFO -    Testing split: 20.0%
+2025-08-07 16:03:40,950 - INFO - Training EURUSD (1/3) with proper data split...
+2025-08-07 16:03:40,950 - INFO -    📊 EURUSD data split:
+2025-08-07 16:03:40,950 - INFO -       Training: 9906 samples (2023-08-07 15:00:00+01:00 to 2025-03-14 10:00:00+00:00)
+2025-08-07 16:03:40,950 - INFO -       Testing:  2477 samples (2025-03-14 11:00:00+00:00 to 2025-08-07 15:00:00+01:00)
+2025-08-07 16:03:40,966 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 16:03:40,969 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 16:03:41,572 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:03:41,572 - INFO -    🚀 Starting training for EURUSD (100 epochs)...

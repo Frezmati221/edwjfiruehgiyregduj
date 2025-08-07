@@ -1,0 +1,146 @@
+2025-08-07 17:45:43,039 - INFO - 📈 Loading forex data...
+2025-08-07 17:45:46,080 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 17:45:46,080 - INFO -    • EURUSD: 6178 data points (2024-08-07 16:00:00+01:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:45:46,080 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 17:45:46,080 - INFO - 🎯 Starting full training process...
+2025-08-07 17:45:46,080 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 17:45:46,080 - INFO -    Training split: 80.0%
+2025-08-07 17:45:46,080 - INFO -    Testing split: 20.0%
+2025-08-07 17:45:46,080 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 17:45:46,080 - INFO -    📊 EURUSD data split:
+2025-08-07 17:45:46,080 - INFO -       Training: 4942 samples (2024-08-07 16:00:00+01:00 to 2025-05-27 18:00:00+01:00)
+2025-08-07 17:45:46,080 - INFO -       Testing:  1236 samples (2025-05-27 19:00:00+01:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:45:46,091 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 17:45:46,091 - INFO -    ✅ Environment initialized. State size: 30
+2025-08-07 17:45:46,622 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 17:45:46,623 - INFO -    🚀 Starting training for EURUSD (1000 epochs)...
+2025-08-07 17:45:58,676 - INFO - 
+    EURUSD Epoch 20 - Return: -0.04%, Sharpe: -803.31, Trades: 765
+2025-08-07 17:46:11,717 - INFO - 
+    EURUSD Epoch 40 - Return: -0.01%, Sharpe: -873.34, Trades: 833
+2025-08-07 17:46:25,666 - INFO - 
+    EURUSD Epoch 60 - Return: -0.02%, Sharpe: -890.83, Trades: 889
+2025-08-07 17:46:39,970 - INFO - 
+    EURUSD Epoch 80 - Return: -0.03%, Sharpe: -1012.50, Trades: 807
+2025-08-07 17:46:54,787 - INFO - 
+    EURUSD Epoch 100 - Return: -0.02%, Sharpe: -1030.17, Trades: 649
+2025-08-07 17:47:09,778 - INFO - 
+    EURUSD Epoch 120 - Return: -0.03%, Sharpe: -992.17, Trades: 814
+2025-08-07 17:47:24,432 - INFO - 
+    EURUSD Epoch 140 - Return: -0.02%, Sharpe: -997.49, Trades: 763
+2025-08-07 17:47:39,444 - INFO - 
+    EURUSD Epoch 160 - Return: -0.02%, Sharpe: -964.52, Trades: 713
+2025-08-07 17:47:54,855 - INFO - 
+    EURUSD Epoch 180 - Return: -0.01%, Sharpe: -1172.82, Trades: 625
+2025-08-07 17:48:10,369 - INFO - 
+    EURUSD Epoch 200 - Return: -0.02%, Sharpe: -1062.21, Trades: 747
+2025-08-07 17:48:26,179 - INFO - 
+    EURUSD Epoch 220 - Return: -0.02%, Sharpe: -1044.49, Trades: 693
+2025-08-07 17:48:42,182 - INFO - 
+    EURUSD Epoch 240 - Return: -0.02%, Sharpe: -1084.86, Trades: 683
+2025-08-07 17:48:59,197 - INFO - 
+    EURUSD Epoch 260 - Return: -0.03%, Sharpe: -1082.22, Trades: 733
+2025-08-07 17:49:15,769 - INFO - 
+    EURUSD Epoch 280 - Return: -0.02%, Sharpe: -994.95, Trades: 693
+2025-08-07 17:49:32,052 - INFO - 
+    EURUSD Epoch 300 - Return: -0.03%, Sharpe: -1010.55, Trades: 729
+2025-08-07 17:49:48,471 - INFO - 
+    EURUSD Epoch 320 - Return: -0.02%, Sharpe: -994.95, Trades: 721
+2025-08-07 17:50:05,111 - INFO - 
+    EURUSD Epoch 340 - Return: -0.02%, Sharpe: -1151.28, Trades: 675
+2025-08-07 17:50:22,009 - INFO - 
+    EURUSD Epoch 360 - Return: -0.02%, Sharpe: -1053.30, Trades: 739
+2025-08-07 17:50:38,999 - INFO - 
+    EURUSD Epoch 380 - Return: -0.01%, Sharpe: -1022.33, Trades: 754
+2025-08-07 17:50:56,186 - INFO - 
+    EURUSD Epoch 400 - Return: -0.03%, Sharpe: -1014.86, Trades: 711
+2025-08-07 17:51:13,443 - INFO - 
+    EURUSD Epoch 420 - Return: -0.01%, Sharpe: -1195.47, Trades: 616
+2025-08-07 17:51:30,558 - INFO - 
+    EURUSD Epoch 440 - Return: -0.03%, Sharpe: -1084.74, Trades: 747
+2025-08-07 17:51:48,455 - INFO - 
+    EURUSD Epoch 460 - Return: -0.03%, Sharpe: -1015.50, Trades: 613
+2025-08-07 17:52:05,998 - INFO - 
+    EURUSD Epoch 480 - Return: -0.02%, Sharpe: -1137.74, Trades: 725
+2025-08-07 17:52:23,713 - INFO - 
+    EURUSD Epoch 500 - Return: -0.02%, Sharpe: -1015.16, Trades: 649
+2025-08-07 17:52:41,565 - INFO - 
+    EURUSD Epoch 520 - Return: -0.02%, Sharpe: -983.19, Trades: 699
+2025-08-07 17:52:59,485 - INFO - 
+    EURUSD Epoch 540 - Return: -0.03%, Sharpe: -1079.49, Trades: 635
+2025-08-07 17:53:17,616 - INFO - 
+    EURUSD Epoch 560 - Return: -0.01%, Sharpe: -1200.97, Trades: 609
+2025-08-07 17:53:35,716 - INFO - 
+    EURUSD Epoch 580 - Return: -0.03%, Sharpe: -1120.03, Trades: 633
+2025-08-07 17:53:53,058 - INFO - 
+    EURUSD Epoch 600 - Return: -0.01%, Sharpe: -1098.40, Trades: 719
+2025-08-07 17:54:09,158 - INFO - 
+    EURUSD Epoch 620 - Return: -0.03%, Sharpe: -1028.89, Trades: 675
+2025-08-07 17:54:24,742 - INFO - 
+    EURUSD Epoch 640 - Return: -0.01%, Sharpe: -1175.22, Trades: 660
+2025-08-07 17:54:40,526 - INFO - 
+    EURUSD Epoch 660 - Return: -0.03%, Sharpe: -999.71, Trades: 639
+2025-08-07 17:54:56,307 - INFO - 
+    EURUSD Epoch 680 - Return: -0.02%, Sharpe: -1003.62, Trades: 723
+2025-08-07 17:55:12,113 - INFO - 
+    EURUSD Epoch 700 - Return: -0.01%, Sharpe: -903.67, Trades: 559
+2025-08-07 17:55:28,073 - INFO - 
+    EURUSD Epoch 720 - Return: -0.02%, Sharpe: -935.32, Trades: 693
+2025-08-07 17:55:44,081 - INFO - 
+    EURUSD Epoch 740 - Return: -0.03%, Sharpe: -1076.16, Trades: 631
+2025-08-07 17:56:00,544 - INFO - 
+    EURUSD Epoch 760 - Return: -0.02%, Sharpe: -934.29, Trades: 727
+2025-08-07 17:56:20,905 - INFO - 
+    EURUSD Epoch 780 - Return: -0.01%, Sharpe: -1048.92, Trades: 649
+2025-08-07 17:56:40,672 - INFO - 
+    EURUSD Epoch 800 - Return: -0.03%, Sharpe: -1016.84, Trades: 651
+2025-08-07 17:57:00,702 - INFO - 
+    EURUSD Epoch 820 - Return: -0.02%, Sharpe: -1044.65, Trades: 613
+2025-08-07 17:57:20,669 - INFO - 
+    EURUSD Epoch 840 - Return: -0.03%, Sharpe: -943.18, Trades: 626
+2025-08-07 17:57:40,867 - INFO - 
+    EURUSD Epoch 860 - Return: -0.02%, Sharpe: -939.32, Trades: 651
+2025-08-07 17:58:01,122 - INFO - 
+    EURUSD Epoch 880 - Return: -0.02%, Sharpe: -931.23, Trades: 745
+2025-08-07 17:58:21,235 - INFO - 
+    EURUSD Epoch 900 - Return: -0.02%, Sharpe: -1142.70, Trades: 683
+2025-08-07 17:58:41,671 - INFO - 
+    EURUSD Epoch 920 - Return: -0.02%, Sharpe: -1099.22, Trades: 709
+2025-08-07 17:59:02,008 - INFO - 
+    EURUSD Epoch 940 - Return: -0.02%, Sharpe: -1011.12, Trades: 631
+2025-08-07 17:59:22,919 - INFO - 
+    EURUSD Epoch 960 - Return: -0.03%, Sharpe: -1189.73, Trades: 631
+2025-08-07 17:59:43,551 - INFO - 
+    EURUSD Epoch 980 - Return: -0.01%, Sharpe: -798.89, Trades: 587
+2025-08-07 18:00:03,109 - INFO - 🧪 Testing EURUSD on UNSEEN data...
+2025-08-07 18:00:04,318 - INFO - ✅ EURUSD training completed!
+2025-08-07 18:00:04,318 - INFO -    📊 TRAINING metrics - Return: -0.00%, Sharpe: -553.17, Win Rate: 23.7%
+2025-08-07 18:00:04,318 - INFO -    🧪 TESTING metrics  - Return: -0.05%, Sharpe: -932.94, Win Rate: 22.0%
+2025-08-07 18:00:04,318 - WARNING -    🚨 OVERFITTING DETECTED for EURUSD!
+2025-08-07 18:00:04,318 - WARNING -       Training Sharpe: -553.17
+2025-08-07 18:00:04,318 - WARNING -       Testing Sharpe: -932.94
+2025-08-07 18:00:04,318 - WARNING -       Difference: 379.77 (>1.0 indicates overfitting)
+2025-08-07 18:00:04,318 - INFO - 
+================================================================================
+2025-08-07 18:00:04,318 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 18:00:04,318 - INFO - ================================================================================
+2025-08-07 18:00:04,318 - INFO - EURUSD:
+2025-08-07 18:00:04,319 - INFO -   📈 Training Return: -0.00% | Testing Return: -0.05%
+2025-08-07 18:00:04,319 - INFO -   📊 Training Sharpe: -553.17 | Testing Sharpe: -932.94
+2025-08-07 18:00:04,319 - INFO -   🎯 Training WinRate: 23.7% | Testing WinRate: 22.0%
+2025-08-07 18:00:04,319 - INFO -   📉 Training MaxDD: 0.0% | Testing MaxDD: 0.1%
+2025-08-07 18:00:04,319 - INFO -   🔍 Overfitting Score: 379.77
+2025-08-07 18:00:04,319 - INFO - 
+2025-08-07 18:00:04,319 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 18:00:04,319 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 18:00:04,319 - ERROR -    Recommendations:
+2025-08-07 18:00:04,319 - ERROR -    • Reduce model complexity
+2025-08-07 18:00:04,319 - ERROR -    • Increase training data
+2025-08-07 18:00:04,319 - ERROR -    • Add more regularization
+2025-08-07 18:00:04,319 - ERROR -    • Use simpler indicators
+2025-08-07 18:00:04,434 - INFO - Model saved to models/forex_model_20250807_180004.pkl
+2025-08-07 18:00:04,434 - INFO - Validation results saved to models/forex_model_20250807_180004_validation.json
+2025-08-07 18:00:04,434 - INFO - ================================================================================
+2025-08-07 18:00:04,434 - INFO - 🧪 Testing production model...
+2025-08-07 18:00:04,442 - ERROR -    • EURUSD: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 18:00:04,442 - INFO - Production-grade Forex AI training session ended.

@@ -1,0 +1,175 @@
+2025-08-07 12:21:40,886 - INFO - 📈 Loading forex data...
+2025-08-07 12:21:45,823 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 12:21:45,823 - INFO -    • EURUSD: 3068 data points (2025-02-07 11:00:00+00:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:21:45,823 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 12:21:45,823 - INFO - 🎯 Starting validation-only process...
+2025-08-07 12:21:45,823 - INFO - Starting walk-forward optimization...
+2025-08-07 12:21:45,823 - INFO - Walk-forward optimization for EURUSD
+2025-08-07 12:21:45,823 - INFO - Training window: 0-500, Test: 500-600
+2025-08-07 12:21:46,674 - INFO - Window completed - Train: nan, Test: -18450.00
+2025-08-07 12:21:46,674 - INFO - Training window: 50-550, Test: 550-650
+2025-08-07 12:21:46,972 - INFO - Window completed - Train: nan, Test: -13800.00
+2025-08-07 12:21:46,972 - INFO - Training window: 100-600, Test: 600-700
+2025-08-07 12:21:47,277 - INFO - Window completed - Train: nan, Test: -13800.00
+2025-08-07 12:21:47,283 - INFO - Training window: 150-650, Test: 650-750
+2025-08-07 12:21:47,656 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:47,657 - INFO - Training window: 200-700, Test: 700-800
+2025-08-07 12:21:47,956 - INFO - Window completed - Train: nan, Test: -15600.00
+2025-08-07 12:21:47,956 - INFO - Training window: 250-750, Test: 750-850
+2025-08-07 12:21:48,252 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:48,252 - INFO - Training window: 300-800, Test: 800-900
+2025-08-07 12:21:48,546 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:48,546 - INFO - Training window: 350-850, Test: 850-950
+2025-08-07 12:21:48,841 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:48,841 - INFO - Training window: 400-900, Test: 900-1000
+2025-08-07 12:21:49,158 - INFO - Window completed - Train: nan, Test: -22350.00
+2025-08-07 12:21:49,158 - INFO - Training window: 450-950, Test: 950-1050
+2025-08-07 12:21:49,457 - INFO - Window completed - Train: nan, Test: -18750.00
+2025-08-07 12:21:49,457 - INFO - Training window: 500-1000, Test: 1000-1100
+2025-08-07 12:21:49,755 - INFO - Window completed - Train: nan, Test: -19650.00
+2025-08-07 12:21:49,755 - INFO - Training window: 550-1050, Test: 1050-1150
+2025-08-07 12:21:50,053 - INFO - Window completed - Train: nan, Test: -18750.00
+2025-08-07 12:21:50,053 - INFO - Training window: 600-1100, Test: 1100-1200
+2025-08-07 12:21:50,347 - INFO - Window completed - Train: nan, Test: -23850.00
+2025-08-07 12:21:50,347 - INFO - Training window: 650-1150, Test: 1150-1250
+2025-08-07 12:21:50,649 - INFO - Window completed - Train: nan, Test: -13800.00
+2025-08-07 12:21:50,650 - INFO - Training window: 700-1200, Test: 1200-1300
+2025-08-07 12:21:50,944 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:50,944 - INFO - Training window: 750-1250, Test: 1250-1350
+2025-08-07 12:21:51,247 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:51,248 - INFO - Training window: 800-1300, Test: 1300-1400
+2025-08-07 12:21:51,545 - INFO - Window completed - Train: nan, Test: -22350.00
+2025-08-07 12:21:51,546 - INFO - Training window: 850-1350, Test: 1350-1450
+2025-08-07 12:21:51,852 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:51,852 - INFO - Training window: 900-1400, Test: 1400-1500
+2025-08-07 12:21:52,247 - INFO - Window completed - Train: nan, Test: -18000.00
+2025-08-07 12:21:52,248 - INFO - Training window: 950-1450, Test: 1450-1550
+2025-08-07 12:21:52,542 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:52,542 - INFO - Training window: 1000-1500, Test: 1500-1600
+2025-08-07 12:21:52,845 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:52,845 - INFO - Training window: 1050-1550, Test: 1550-1650
+2025-08-07 12:21:53,144 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:53,144 - INFO - Training window: 1100-1600, Test: 1600-1700
+2025-08-07 12:21:53,457 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:53,457 - INFO - Training window: 1150-1650, Test: 1650-1750
+2025-08-07 12:21:53,756 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:53,756 - INFO - Training window: 1200-1700, Test: 1700-1800
+2025-08-07 12:21:54,057 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:54,057 - INFO - Training window: 1250-1750, Test: 1750-1850
+2025-08-07 12:21:54,353 - INFO - Window completed - Train: nan, Test: -20850.00
+2025-08-07 12:21:54,353 - INFO - Training window: 1300-1800, Test: 1800-1900
+2025-08-07 12:21:54,720 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:54,720 - INFO - Training window: 1350-1850, Test: 1850-1950
+2025-08-07 12:21:55,013 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:55,013 - INFO - Training window: 1400-1900, Test: 1900-2000
+2025-08-07 12:21:55,312 - INFO - Window completed - Train: nan, Test: -13950.00
+2025-08-07 12:21:55,312 - INFO - Training window: 1450-1950, Test: 1950-2050
+2025-08-07 12:21:55,681 - INFO - Window completed - Train: nan, Test: -24000.00
+2025-08-07 12:21:55,681 - INFO - Training window: 1500-2000, Test: 2000-2100
+2025-08-07 12:21:55,980 - INFO - Window completed - Train: nan, Test: -24000.00
+2025-08-07 12:21:55,980 - INFO - Training window: 1550-2050, Test: 2050-2150
+2025-08-07 12:21:56,288 - INFO - Window completed - Train: nan, Test: -22200.00
+2025-08-07 12:21:56,288 - INFO - Training window: 1600-2100, Test: 2100-2200
+2025-08-07 12:21:56,587 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:56,587 - INFO - Training window: 1650-2150, Test: 2150-2250
+2025-08-07 12:21:56,892 - INFO - Window completed - Train: nan, Test: -19050.00
+2025-08-07 12:21:56,893 - INFO - Training window: 1700-2200, Test: 2200-2300
+2025-08-07 12:21:57,195 - INFO - Window completed - Train: nan, Test: -16650.00
+2025-08-07 12:21:57,195 - INFO - Training window: 1750-2250, Test: 2250-2350
+2025-08-07 12:21:57,501 - INFO - Window completed - Train: nan, Test: -19500.00
+2025-08-07 12:21:57,501 - INFO - Training window: 1800-2300, Test: 2300-2400
+2025-08-07 12:21:57,800 - INFO - Window completed - Train: nan, Test: -16500.00
+2025-08-07 12:21:57,801 - INFO - Training window: 1850-2350, Test: 2350-2450
+2025-08-07 12:21:58,104 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:58,104 - INFO - Training window: 1900-2400, Test: 2400-2500
+2025-08-07 12:21:58,404 - INFO - Window completed - Train: nan, Test: -23700.00
+2025-08-07 12:21:58,404 - INFO - Training window: 1950-2450, Test: 2450-2550
+2025-08-07 12:21:58,710 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:58,711 - INFO - Training window: 2000-2500, Test: 2500-2600
+2025-08-07 12:21:59,013 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:21:59,013 - INFO - Training window: 2050-2550, Test: 2550-2650
+2025-08-07 12:21:59,316 - INFO - Window completed - Train: nan, Test: -14700.00
+2025-08-07 12:21:59,316 - INFO - Training window: 2100-2600, Test: 2600-2700
+2025-08-07 12:21:59,619 - INFO - Window completed - Train: nan, Test: -23850.00
+2025-08-07 12:21:59,619 - INFO - Training window: 2150-2650, Test: 2650-2750
+2025-08-07 12:21:59,921 - INFO - Window completed - Train: nan, Test: -22800.00
+2025-08-07 12:21:59,921 - INFO - Training window: 2200-2700, Test: 2700-2800
+2025-08-07 12:22:00,233 - INFO - Window completed - Train: nan, Test: -17550.00
+2025-08-07 12:22:00,233 - INFO - Training window: 2250-2750, Test: 2750-2850
+2025-08-07 12:22:00,538 - INFO - Window completed - Train: nan, Test: -23700.00
+2025-08-07 12:22:00,538 - INFO - Training window: 2300-2800, Test: 2800-2900
+2025-08-07 12:22:00,845 - INFO - Window completed - Train: nan, Test: -22950.00
+2025-08-07 12:22:00,845 - INFO - Training window: 2350-2850, Test: 2850-2950
+2025-08-07 12:22:01,152 - INFO - Window completed - Train: nan, Test: -13800.00
+2025-08-07 12:22:01,152 - INFO - Training window: 2400-2900, Test: 2900-3000
+2025-08-07 12:22:01,457 - INFO - Window completed - Train: nan, Test: -24150.00
+2025-08-07 12:22:01,457 - INFO - Training window: 2450-2950, Test: 2950-3050
+2025-08-07 12:22:01,762 - INFO - Window completed - Train: nan, Test: -16800.00
+2025-08-07 12:22:01,762 - INFO - EURUSD Summary - Return: 0.00%, Sharpe: 0.00, Drawdown: 0.00%
+2025-08-07 12:22:01,763 - INFO - 
+============================================================
+2025-08-07 12:22:01,763 - INFO - 📊 WALK-FORWARD VALIDATION SUMMARY
+2025-08-07 12:22:01,763 - INFO - ============================================================
+2025-08-07 12:22:01,763 - INFO - 
+🚨 CRITICAL REALITY CHECK - YAHOO FINANCE DATA LIMITATIONS:
+2025-08-07 12:22:01,763 - INFO - ================================================================================
+2025-08-07 12:22:01,763 - INFO - 📊 DATA QUALITY ISSUES THAT AFFECT LIVE TRADING:
+2025-08-07 12:22:01,763 - INFO -    🔴 Yahoo Finance provides MID prices only (no bid/ask spread)
+2025-08-07 12:22:01,763 - INFO -    🔴 15-20 minute delays on free tier
+2025-08-07 12:22:01,763 - INFO -    🔴 Weekend gaps and missing data during low liquidity
+2025-08-07 12:22:01,763 - INFO -    🔴 No tick-by-tick data (orders don't execute at exact prices)
+2025-08-07 12:22:01,764 - INFO -    🔴 No news event timestamps (can't filter major announcements)
+2025-08-07 12:22:01,764 - INFO -    🔴 Limited historical depth for some pairs
+2025-08-07 12:22:01,764 - INFO - 
+2025-08-07 12:22:01,764 - INFO - 🚨 EXECUTION REALITY vs BACKTEST:
+2025-08-07 12:22:01,764 - INFO -    • Backtest shows: 'Buy at 1.2000' → Trade executed instantly
+2025-08-07 12:22:01,764 - INFO -    • Live reality: 'Buy at 1.2000' → Spread 1.2003/1.2000, slippage to 1.2005
+2025-08-07 12:22:01,764 - INFO -    • Result: 0.5 pip immediate loss that backtests don't account for
+2025-08-07 12:22:01,764 - INFO - 
+2025-08-07 12:22:01,764 - INFO - ⚠️  PRODUCTION SAFETY CHECKLIST:
+2025-08-07 12:22:01,764 - INFO - ================================================================================
+2025-08-07 12:22:01,764 - INFO - 📋 BEFORE LIVE TRADING - MANDATORY STEPS:
+2025-08-07 12:22:01,764 - INFO -    ✅ 1. Paper trade for minimum 6 months with consistent profits
+2025-08-07 12:22:01,764 - INFO -    ✅ 2. Stress test with historical crisis periods (2008, 2020, Brexit)
+2025-08-07 12:22:01,764 - INFO -    ✅ 3. Implement redundant VPS infrastructure with 99.9% uptime
+2025-08-07 12:22:01,764 - INFO -    ✅ 4. Set up multiple broker connections with failover
+2025-08-07 12:22:01,764 - INFO -    ✅ 5. Configure real-time monitoring and alert systems
+2025-08-07 12:22:01,764 - INFO -    ✅ 6. Verify regulatory compliance in your jurisdiction
+2025-08-07 12:22:01,764 - INFO -    ✅ 7. Start with micro lots ($0.01/pip) for initial 1000 trades
+2025-08-07 12:22:01,764 - INFO -    ✅ 8. Implement news calendar integration for trade filtering
+2025-08-07 12:22:01,764 - INFO -    ✅ 9. Set up automated backup and recovery systems
+2025-08-07 12:22:01,764 - INFO -    ✅ 10. Have emergency shutdown procedures documented
+2025-08-07 12:22:01,764 - INFO - 
+2025-08-07 12:22:01,765 - INFO - 🚨 CRITICAL RISK WARNINGS:
+2025-08-07 12:22:01,765 - INFO -    • This model uses Yahoo Finance data with inherent limitations
+2025-08-07 12:22:01,765 - INFO -    • Real trading involves execution risks NOT modeled in backtests
+2025-08-07 12:22:01,765 - INFO -    • Spread costs alone can eliminate 20-30% of backtest profits
+2025-08-07 12:22:01,765 - INFO -    • Past performance does not guarantee future results
+2025-08-07 12:22:01,765 - INFO -    • Leverage can amplify losses beyond your initial investment
+2025-08-07 12:22:01,765 - INFO -    • Market conditions can change rapidly making models obsolete
+2025-08-07 12:22:01,765 - INFO -    • NEVER risk more than you can afford to lose completely
+2025-08-07 12:22:01,765 - INFO -    • Most retail traders lose money - AI doesn't guarantee profits
+2025-08-07 12:22:01,765 - INFO - 
+2025-08-07 12:22:01,765 - INFO - � REALISTIC EXPECTATIONS:
+2025-08-07 12:22:01,765 - INFO -    • If backtest shows 50% annual return → expect 10-20% live (if lucky)
+2025-08-07 12:22:01,765 - INFO -    • If backtest shows 80% win rate → expect 50-60% live
+2025-08-07 12:22:01,765 - INFO -    • If backtest shows 5% max drawdown → expect 15-25% live
+2025-08-07 12:22:01,765 - INFO -    • Execution costs can consume 30-50% of theoretical profits
+2025-08-07 12:22:01,765 - INFO - 
+2025-08-07 12:22:01,765 - INFO - 🔬 MANDATORY VALIDATION STEPS:
+2025-08-07 12:22:01,765 - INFO -    1. Paper trade for 6+ months before risking real money
+2025-08-07 12:22:01,765 - INFO -    2. Start with $100 real money to test execution reality
+2025-08-07 12:22:01,765 - INFO -    3. Compare live results to backtest for 3+ months
+2025-08-07 12:22:01,765 - INFO -    4. If live performance < 50% of backtest → stop immediately
+2025-08-07 12:22:01,766 - INFO -    5. Only scale up if consistently profitable for 12+ months
+2025-08-07 12:22:01,766 - INFO - 
+2025-08-07 12:22:01,766 - INFO - 📊 NEXT STEPS FOR PRODUCTION (MANDATORY FOR LIVE TRADING):
+2025-08-07 12:22:01,766 - INFO -    1. Replace Yahoo data with professional tick data feed
+2025-08-07 12:22:01,766 - INFO -    2. Implement real-time bid/ask spread monitoring
+2025-08-07 12:22:01,766 - INFO -    3. Add news calendar integration for trade filtering
+2025-08-07 12:22:01,766 - INFO -    4. Implement slippage and rejection rate monitoring
+2025-08-07 12:22:01,766 - INFO -    5. Add broker-specific execution latency compensation
+2025-08-07 12:22:01,766 - INFO -    6. Set up redundant data feeds and order routing
+2025-08-07 12:22:01,766 - INFO -    7. Implement position correlation monitoring across all pairs
+2025-08-07 12:22:01,766 - INFO - ================================================================================
+2025-08-07 12:22:01,766 - INFO - Production-grade Forex AI training session ended.

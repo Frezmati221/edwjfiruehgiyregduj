@@ -1,0 +1,52 @@
+2025-08-07 15:45:36,149 - INFO - 📈 Loading forex data...
+2025-08-07 15:45:38,886 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:45:38,886 - INFO -    • USDJPY: 6146 data points (2024-08-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:45:38,886 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 15:45:38,886 - INFO - 🎯 Starting full training process...
+2025-08-07 15:45:38,886 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:45:38,886 - INFO -    Training split: 80.0%
+2025-08-07 15:45:38,886 - INFO -    Testing split: 20.0%
+2025-08-07 15:45:38,886 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 15:45:38,887 - INFO -    📊 USDJPY data split:
+2025-08-07 15:45:38,887 - INFO -       Training: 4916 samples (2024-08-07 14:00:00+01:00 to 2025-05-27 13:00:00+01:00)
+2025-08-07 15:45:38,887 - INFO -       Testing:  1230 samples (2025-05-27 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:45:38,898 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 15:45:38,901 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:45:39,596 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:45:39,597 - INFO -    🚀 Starting training for USDJPY (50 epochs)...
+2025-08-07 15:46:49,015 - INFO - 
+    USDJPY Epoch 20 - Return: 349.79%, Sharpe: 1.32, Trades: 985
+2025-08-07 15:47:59,164 - INFO - 
+    USDJPY Epoch 40 - Return: -41.55%, Sharpe: 0.85, Trades: 973
+2025-08-07 15:48:30,871 - INFO - 🧪 Testing USDJPY on UNSEEN data...
+2025-08-07 15:48:35,301 - INFO - ✅ USDJPY training completed!
+2025-08-07 15:48:35,301 - INFO -    📊 TRAINING metrics - Return: 12565.85%, Sharpe: 2.08, Win Rate: 26.1%
+2025-08-07 15:48:35,301 - INFO -    🧪 TESTING metrics  - Return: -45.47%, Sharpe: 0.26, Win Rate: 24.1%
+2025-08-07 15:48:35,301 - WARNING -    🚨 OVERFITTING DETECTED for USDJPY!
+2025-08-07 15:48:35,301 - WARNING -       Training Sharpe: 2.08
+2025-08-07 15:48:35,301 - WARNING -       Testing Sharpe: 0.26
+2025-08-07 15:48:35,301 - WARNING -       Difference: 1.82 (>1.0 indicates overfitting)
+2025-08-07 15:48:35,301 - INFO - 
+================================================================================
+2025-08-07 15:48:35,302 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 15:48:35,302 - INFO - ================================================================================
+2025-08-07 15:48:35,302 - INFO - USDJPY:
+2025-08-07 15:48:35,302 - INFO -   📈 Training Return: 12565.85% | Testing Return: -45.47%
+2025-08-07 15:48:35,302 - INFO -   📊 Training Sharpe: 2.08 | Testing Sharpe: 0.26
+2025-08-07 15:48:35,302 - INFO -   🎯 Training WinRate: 26.1% | Testing WinRate: 24.1%
+2025-08-07 15:48:35,302 - INFO -   📉 Training MaxDD: 71.8% | Testing MaxDD: 95.5%
+2025-08-07 15:48:35,302 - INFO -   🔍 Overfitting Score: 1.82
+2025-08-07 15:48:35,302 - INFO - 
+2025-08-07 15:48:35,302 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 15:48:35,302 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 15:48:35,302 - ERROR -    Recommendations:
+2025-08-07 15:48:35,302 - ERROR -    • Reduce model complexity
+2025-08-07 15:48:35,302 - ERROR -    • Increase training data
+2025-08-07 15:48:35,302 - ERROR -    • Add more regularization
+2025-08-07 15:48:35,302 - ERROR -    • Use simpler indicators
+2025-08-07 15:48:35,331 - INFO - Model saved to models/forex_model_20250807_154835.pkl
+2025-08-07 15:48:35,331 - INFO - Validation results saved to models/forex_model_20250807_154835_validation.json
+2025-08-07 15:48:35,331 - INFO - ================================================================================
+2025-08-07 15:48:35,331 - INFO - 🧪 Testing production model...
+2025-08-07 15:48:35,343 - ERROR -    • USDJPY: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 15:48:35,343 - INFO - Production-grade Forex AI training session ended.

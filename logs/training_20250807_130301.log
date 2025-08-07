@@ -1,0 +1,23 @@
+2025-08-07 13:03:01,739 - INFO - 📈 Loading forex data...
+2025-08-07 13:03:03,792 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 13:03:03,793 - INFO -    • USDJPY: 1561 data points (2025-05-07 12:00:00+01:00 to 2025-08-07 12:00:00+01:00)
+2025-08-07 13:03:03,793 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 13:03:03,793 - INFO - 🎯 Starting full training process...
+2025-08-07 13:03:03,793 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 13:03:03,793 - INFO -    Training split: 80.0%
+2025-08-07 13:03:03,793 - INFO -    Testing split: 20.0%
+2025-08-07 13:03:03,793 - INFO - Using walk-forward optimization for training...
+2025-08-07 13:11:30,949 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 13:11:30,949 - INFO -    📊 USDJPY data split:
+2025-08-07 13:11:30,950 - INFO -       Training: 1248 samples (2025-05-07 12:00:00+01:00 to 2025-07-21 07:00:00+01:00)
+2025-08-07 13:11:30,950 - INFO -       Testing:  313 samples (2025-07-21 08:00:00+01:00 to 2025-08-07 12:00:00+01:00)
+2025-08-07 13:11:30,961 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 13:11:30,965 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 13:11:30,995 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 13:11:30,995 - INFO -    🚀 Starting training for USDJPY (5 epochs)...
+2025-08-07 13:12:06,240 - WARNING - ⚠️ USDJPY epoch 0 took 35.2s - skipping to next epoch
+2025-08-07 13:12:45,881 - WARNING - ⚠️ USDJPY epoch 1 took 39.6s - skipping to next epoch
+2025-08-07 13:13:25,939 - WARNING - ⚠️ USDJPY epoch 2 took 40.1s - skipping to next epoch
+2025-08-07 13:14:04,242 - WARNING - ⚠️ USDJPY epoch 3 took 38.3s - skipping to next epoch
+2025-08-07 13:14:10,795 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 13:14:10,800 - INFO - Production-grade Forex AI training session ended.

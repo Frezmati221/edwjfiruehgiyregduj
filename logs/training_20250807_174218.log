@@ -1,0 +1,66 @@
+2025-08-07 17:42:18,092 - INFO - 📈 Loading forex data...
+2025-08-07 17:42:20,243 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 17:42:20,243 - INFO -    • EURUSD: 3068 data points (2025-02-07 16:00:00+00:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:42:20,243 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 17:42:20,243 - INFO - 🎯 Starting full training process...
+2025-08-07 17:42:20,243 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 17:42:20,243 - INFO -    Training split: 80.0%
+2025-08-07 17:42:20,243 - INFO -    Testing split: 20.0%
+2025-08-07 17:42:20,243 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 17:42:20,243 - INFO -    📊 EURUSD data split:
+2025-08-07 17:42:20,243 - INFO -       Training: 2454 samples (2025-02-07 16:00:00+00:00 to 2025-07-02 21:00:00+01:00)
+2025-08-07 17:42:20,244 - INFO -       Testing:  614 samples (2025-07-02 22:00:00+01:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:42:20,254 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 17:42:20,254 - INFO -    ✅ Environment initialized. State size: 30
+2025-08-07 17:42:20,809 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 17:42:20,809 - INFO -    🚀 Starting training for EURUSD (200 epochs)...
+2025-08-07 17:42:33,120 - INFO - 
+    EURUSD Epoch 20 - Return: -0.00%, Sharpe: -473.29, Trades: 763
+2025-08-07 17:42:46,317 - INFO - 
+    EURUSD Epoch 40 - Return: -0.03%, Sharpe: -444.87, Trades: 859
+2025-08-07 17:43:00,246 - INFO - 
+    EURUSD Epoch 60 - Return: -0.02%, Sharpe: -496.48, Trades: 913
+2025-08-07 17:43:14,792 - INFO - 
+    EURUSD Epoch 80 - Return: -0.03%, Sharpe: -536.84, Trades: 768
+2025-08-07 17:43:30,084 - INFO - 
+    EURUSD Epoch 100 - Return: -0.03%, Sharpe: -515.09, Trades: 726
+2025-08-07 17:43:44,846 - INFO - 
+    EURUSD Epoch 120 - Return: -0.00%, Sharpe: -477.40, Trades: 742
+2025-08-07 17:44:00,227 - INFO - 
+    EURUSD Epoch 140 - Return: -0.03%, Sharpe: -525.16, Trades: 694
+2025-08-07 17:44:15,607 - INFO - 
+    EURUSD Epoch 160 - Return: -0.02%, Sharpe: -524.50, Trades: 729
+2025-08-07 17:44:31,187 - INFO - 
+    EURUSD Epoch 180 - Return: -0.01%, Sharpe: -525.97, Trades: 717
+2025-08-07 17:44:46,152 - INFO - 🧪 Testing EURUSD on UNSEEN data...
+2025-08-07 17:44:46,855 - INFO - ✅ EURUSD training completed!
+2025-08-07 17:44:46,855 - INFO -    📊 TRAINING metrics - Return: 0.00%, Sharpe: -389.70, Win Rate: 25.4%
+2025-08-07 17:44:46,855 - INFO -    🧪 TESTING metrics  - Return: -0.05%, Sharpe: -547.81, Win Rate: 21.9%
+2025-08-07 17:44:46,855 - WARNING -    🚨 OVERFITTING DETECTED for EURUSD!
+2025-08-07 17:44:46,855 - WARNING -       Training Sharpe: -389.70
+2025-08-07 17:44:46,855 - WARNING -       Testing Sharpe: -547.81
+2025-08-07 17:44:46,855 - WARNING -       Difference: 158.11 (>1.0 indicates overfitting)
+2025-08-07 17:44:46,855 - INFO - 
+================================================================================
+2025-08-07 17:44:46,855 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 17:44:46,855 - INFO - ================================================================================
+2025-08-07 17:44:46,855 - INFO - EURUSD:
+2025-08-07 17:44:46,855 - INFO -   📈 Training Return: 0.00% | Testing Return: -0.05%
+2025-08-07 17:44:46,855 - INFO -   📊 Training Sharpe: -389.70 | Testing Sharpe: -547.81
+2025-08-07 17:44:46,855 - INFO -   🎯 Training WinRate: 25.4% | Testing WinRate: 21.9%
+2025-08-07 17:44:46,855 - INFO -   📉 Training MaxDD: 0.0% | Testing MaxDD: 0.0%
+2025-08-07 17:44:46,855 - INFO -   🔍 Overfitting Score: 158.11
+2025-08-07 17:44:46,855 - INFO - 
+2025-08-07 17:44:46,856 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 17:44:46,856 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 17:44:46,856 - ERROR -    Recommendations:
+2025-08-07 17:44:46,856 - ERROR -    • Reduce model complexity
+2025-08-07 17:44:46,856 - ERROR -    • Increase training data
+2025-08-07 17:44:46,856 - ERROR -    • Add more regularization
+2025-08-07 17:44:46,856 - ERROR -    • Use simpler indicators
+2025-08-07 17:44:46,885 - INFO - Model saved to models/forex_model_20250807_174446.pkl
+2025-08-07 17:44:46,885 - INFO - Validation results saved to models/forex_model_20250807_174446_validation.json
+2025-08-07 17:44:46,885 - INFO - ================================================================================
+2025-08-07 17:44:46,886 - INFO - 🧪 Testing production model...
+2025-08-07 17:44:46,894 - ERROR -    • EURUSD: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 17:44:46,894 - INFO - Production-grade Forex AI training session ended.

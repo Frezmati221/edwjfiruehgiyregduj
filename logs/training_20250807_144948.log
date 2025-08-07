@@ -1,0 +1,18 @@
+2025-08-07 14:49:48,616 - INFO - 📈 Loading forex data...
+2025-08-07 14:49:52,130 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 14:49:52,130 - INFO -    • EURUSD: 1572 data points (2025-05-07 13:00:00+01:00 to 2025-08-07 13:00:00+01:00)
+2025-08-07 14:49:52,130 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 14:49:52,130 - INFO - 🎯 Starting full training process...
+2025-08-07 14:49:52,130 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 14:49:52,130 - INFO -    Training split: 80.0%
+2025-08-07 14:49:52,130 - INFO -    Testing split: 20.0%
+2025-08-07 14:49:52,131 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 14:49:52,131 - INFO -    📊 EURUSD data split:
+2025-08-07 14:49:52,131 - INFO -       Training: 1257 samples (2025-05-07 13:00:00+01:00 to 2025-07-21 08:00:00+01:00)
+2025-08-07 14:49:52,131 - INFO -       Testing:  315 samples (2025-07-21 09:00:00+01:00 to 2025-08-07 13:00:00+01:00)
+2025-08-07 14:49:52,140 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 14:49:52,143 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 14:49:52,822 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 14:49:52,822 - INFO -    🚀 Starting training for EURUSD (50 epochs)...
+2025-08-07 14:50:59,963 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 14:50:59,973 - INFO - Production-grade Forex AI training session ended.

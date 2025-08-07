@@ -1,0 +1,13 @@
+2025-08-07 12:45:46,576 - INFO - 📈 Loading forex data...
+2025-08-07 12:45:48,425 - INFO - ✅ Data loaded successfully for 3 pairs
+2025-08-07 12:45:48,425 - INFO -    • EURUSD: 1572 data points (2025-05-07 11:00:00+01:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:45:48,425 - INFO -    • GBPUSD: 1572 data points (2025-05-07 11:00:00+01:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:45:48,425 - INFO -    • USDJPY: 1561 data points (2025-05-07 11:00:00+01:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:45:48,425 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD', 'GBPUSD', 'USDJPY']
+2025-08-07 12:45:48,425 - INFO - 🎯 Starting full training process...
+2025-08-07 12:45:48,425 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 12:45:48,425 - INFO -    Training split: 80.0%
+2025-08-07 12:45:48,425 - INFO -    Testing split: 20.0%
+2025-08-07 12:45:48,425 - INFO - Using walk-forward optimization for training...
+2025-08-07 12:46:02,691 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 12:46:02,693 - INFO - Production-grade Forex AI training session ended.

@@ -1,0 +1,146 @@
+2025-08-07 17:05:25,806 - INFO - 📈 Loading forex data...
+2025-08-07 17:05:29,136 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 17:05:29,136 - INFO -    • USDJPY: 6146 data points (2024-08-07 16:00:00+01:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:05:29,136 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 17:05:29,136 - INFO - 🎯 Starting full training process...
+2025-08-07 17:05:29,136 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 17:05:29,136 - INFO -    Training split: 80.0%
+2025-08-07 17:05:29,136 - INFO -    Testing split: 20.0%
+2025-08-07 17:05:29,136 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 17:05:29,136 - INFO -    📊 USDJPY data split:
+2025-08-07 17:05:29,136 - INFO -       Training: 4916 samples (2024-08-07 16:00:00+01:00 to 2025-05-27 15:00:00+01:00)
+2025-08-07 17:05:29,137 - INFO -       Testing:  1230 samples (2025-05-27 16:00:00+01:00 to 2025-08-07 16:00:00+01:00)
+2025-08-07 17:05:29,148 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 17:05:29,148 - INFO -    ✅ Environment initialized. State size: 30
+2025-08-07 17:05:29,699 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 17:05:29,699 - INFO -    🚀 Starting training for USDJPY (1000 epochs)...
+2025-08-07 17:05:42,149 - INFO - 
+    USDJPY Epoch 20 - Return: 41.73%, Sharpe: 0.98, Trades: 983
+2025-08-07 17:05:54,376 - INFO - 
+    USDJPY Epoch 40 - Return: -92.35%, Sharpe: 0.03, Trades: 726
+2025-08-07 17:06:07,112 - INFO - 
+    USDJPY Epoch 60 - Return: -63.81%, Sharpe: 0.50, Trades: 604
+2025-08-07 17:06:20,114 - INFO - 
+    USDJPY Epoch 80 - Return: -94.07%, Sharpe: -0.42, Trades: 436
+2025-08-07 17:06:33,305 - INFO - 
+    USDJPY Epoch 100 - Return: -85.30%, Sharpe: 0.09, Trades: 470
+2025-08-07 17:06:46,488 - INFO - 
+    USDJPY Epoch 120 - Return: -86.04%, Sharpe: -0.35, Trades: 202
+2025-08-07 17:06:59,950 - INFO - 
+    USDJPY Epoch 140 - Return: 1046.79%, Sharpe: 1.54, Trades: 983
+2025-08-07 17:07:13,654 - INFO - 
+    USDJPY Epoch 160 - Return: 1627.29%, Sharpe: 1.59, Trades: 985
+2025-08-07 17:07:27,121 - INFO - 
+    USDJPY Epoch 180 - Return: 221.78%, Sharpe: 1.28, Trades: 977
+2025-08-07 17:07:41,098 - INFO - 
+    USDJPY Epoch 200 - Return: -26.68%, Sharpe: 0.76, Trades: 840
+2025-08-07 17:07:55,076 - INFO - 
+    USDJPY Epoch 220 - Return: -82.33%, Sharpe: 0.24, Trades: 442
+2025-08-07 17:08:09,414 - INFO - 
+    USDJPY Epoch 240 - Return: -77.33%, Sharpe: 0.84, Trades: 991
+2025-08-07 17:08:23,400 - INFO - 
+    USDJPY Epoch 260 - Return: -53.54%, Sharpe: 0.43, Trades: 374
+2025-08-07 17:08:37,951 - INFO - 
+    USDJPY Epoch 280 - Return: 2012.75%, Sharpe: 1.71, Trades: 973
+2025-08-07 17:08:52,841 - INFO - 
+    USDJPY Epoch 300 - Return: -27.69%, Sharpe: 0.94, Trades: 974
+2025-08-07 17:09:08,423 - INFO - 
+    USDJPY Epoch 320 - Return: -21.00%, Sharpe: 0.96, Trades: 971
+2025-08-07 17:09:23,833 - INFO - 
+    USDJPY Epoch 340 - Return: -64.79%, Sharpe: 0.51, Trades: 446
+2025-08-07 17:09:39,114 - INFO - 
+    USDJPY Epoch 360 - Return: -42.03%, Sharpe: 0.61, Trades: 528
+2025-08-07 17:09:54,495 - INFO - 
+    USDJPY Epoch 380 - Return: 5501.02%, Sharpe: 1.93, Trades: 983
+2025-08-07 17:10:10,305 - INFO - 
+    USDJPY Epoch 400 - Return: 506.04%, Sharpe: 1.42, Trades: 975
+2025-08-07 17:10:25,822 - INFO - 
+    USDJPY Epoch 420 - Return: -95.54%, Sharpe: -0.33, Trades: 456
+2025-08-07 17:10:41,869 - INFO - 
+    USDJPY Epoch 440 - Return: -27.12%, Sharpe: 0.70, Trades: 474
+2025-08-07 17:10:58,021 - INFO - 
+    USDJPY Epoch 460 - Return: 15.34%, Sharpe: 1.02, Trades: 973
+2025-08-07 17:11:14,015 - INFO - 
+    USDJPY Epoch 480 - Return: 232.22%, Sharpe: 1.30, Trades: 983
+2025-08-07 17:11:30,992 - INFO - 
+    USDJPY Epoch 500 - Return: -91.12%, Sharpe: 0.41, Trades: 808
+2025-08-07 17:11:48,115 - INFO - 
+    USDJPY Epoch 520 - Return: -93.09%, Sharpe: -0.47, Trades: 262
+2025-08-07 17:12:05,638 - INFO - 
+    USDJPY Epoch 540 - Return: 4558.63%, Sharpe: 1.85, Trades: 979
+2025-08-07 17:12:23,493 - INFO - 
+    USDJPY Epoch 560 - Return: -88.33%, Sharpe: 0.04, Trades: 454
+2025-08-07 17:12:41,113 - INFO - 
+    USDJPY Epoch 580 - Return: 1426.74%, Sharpe: 1.62, Trades: 981
+2025-08-07 17:12:59,317 - INFO - 
+    USDJPY Epoch 600 - Return: -24.56%, Sharpe: 0.75, Trades: 702
+2025-08-07 17:13:17,164 - INFO - 
+    USDJPY Epoch 620 - Return: 2581.01%, Sharpe: 1.79, Trades: 981
+2025-08-07 17:13:33,248 - INFO - 
+    USDJPY Epoch 640 - Return: 295.86%, Sharpe: 1.22, Trades: 554
+2025-08-07 17:13:50,901 - INFO - 
+    USDJPY Epoch 660 - Return: 34173.63%, Sharpe: 2.35, Trades: 983
+2025-08-07 17:14:08,686 - INFO - 
+    USDJPY Epoch 680 - Return: 185.58%, Sharpe: 1.27, Trades: 981
+2025-08-07 17:14:26,304 - INFO - 
+    USDJPY Epoch 700 - Return: -81.27%, Sharpe: 0.42, Trades: 666
+2025-08-07 17:14:44,267 - INFO - 
+    USDJPY Epoch 720 - Return: -79.65%, Sharpe: 0.55, Trades: 936
+2025-08-07 17:15:02,618 - INFO - 
+    USDJPY Epoch 740 - Return: -73.57%, Sharpe: 0.20, Trades: 336
+2025-08-07 17:15:21,108 - INFO - 
+    USDJPY Epoch 760 - Return: -93.58%, Sharpe: -0.25, Trades: 344
+2025-08-07 17:15:39,545 - INFO - 
+    USDJPY Epoch 780 - Return: 115.51%, Sharpe: 1.19, Trades: 981
+2025-08-07 17:15:58,140 - INFO - 
+    USDJPY Epoch 800 - Return: 11.85%, Sharpe: 1.02, Trades: 985
+2025-08-07 17:16:16,946 - INFO - 
+    USDJPY Epoch 820 - Return: 1246.50%, Sharpe: 1.64, Trades: 977
+2025-08-07 17:16:35,988 - INFO - 
+    USDJPY Epoch 840 - Return: 40.30%, Sharpe: 1.10, Trades: 971
+2025-08-07 17:16:55,084 - INFO - 
+    USDJPY Epoch 860 - Return: 112577.40%, Sharpe: 2.60, Trades: 985
+2025-08-07 17:17:14,596 - INFO - 
+    USDJPY Epoch 880 - Return: -80.99%, Sharpe: 0.64, Trades: 930
+2025-08-07 17:17:33,954 - INFO - 
+    USDJPY Epoch 900 - Return: -89.66%, Sharpe: 0.12, Trades: 444
+2025-08-07 17:17:53,387 - INFO - 
+    USDJPY Epoch 920 - Return: -94.87%, Sharpe: -1.50, Trades: 168
+2025-08-07 17:18:13,146 - INFO - 
+    USDJPY Epoch 940 - Return: 31840.79%, Sharpe: 2.30, Trades: 973
+2025-08-07 17:18:32,875 - INFO - 
+    USDJPY Epoch 960 - Return: 666.56%, Sharpe: 1.34, Trades: 398
+2025-08-07 17:18:52,638 - INFO - 
+    USDJPY Epoch 980 - Return: 2644.75%, Sharpe: 1.76, Trades: 977
+2025-08-07 17:19:11,943 - INFO - 🧪 Testing USDJPY on UNSEEN data...
+2025-08-07 17:19:13,093 - INFO - ✅ USDJPY training completed!
+2025-08-07 17:19:13,093 - INFO -    📊 TRAINING metrics - Return: 3192139.51%, Sharpe: 3.31, Win Rate: 27.4%
+2025-08-07 17:19:13,093 - INFO -    🧪 TESTING metrics  - Return: -23.67%, Sharpe: 0.80, Win Rate: 24.3%
+2025-08-07 17:19:13,093 - WARNING -    🚨 OVERFITTING DETECTED for USDJPY!
+2025-08-07 17:19:13,093 - WARNING -       Training Sharpe: 3.31
+2025-08-07 17:19:13,093 - WARNING -       Testing Sharpe: 0.80
+2025-08-07 17:19:13,094 - WARNING -       Difference: 2.51 (>1.0 indicates overfitting)
+2025-08-07 17:19:13,094 - INFO - 
+================================================================================
+2025-08-07 17:19:13,094 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 17:19:13,094 - INFO - ================================================================================
+2025-08-07 17:19:13,094 - INFO - USDJPY:
+2025-08-07 17:19:13,094 - INFO -   📈 Training Return: 3192139.51% | Testing Return: -23.67%
+2025-08-07 17:19:13,094 - INFO -   📊 Training Sharpe: 3.31 | Testing Sharpe: 0.80
+2025-08-07 17:19:13,094 - INFO -   🎯 Training WinRate: 27.4% | Testing WinRate: 24.3%
+2025-08-07 17:19:13,094 - INFO -   📉 Training MaxDD: 87.2% | Testing MaxDD: 95.9%
+2025-08-07 17:19:13,094 - INFO -   🔍 Overfitting Score: 2.51
+2025-08-07 17:19:13,094 - INFO - 
+2025-08-07 17:19:13,094 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 17:19:13,094 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 17:19:13,094 - ERROR -    Recommendations:
+2025-08-07 17:19:13,094 - ERROR -    • Reduce model complexity
+2025-08-07 17:19:13,094 - ERROR -    • Increase training data
+2025-08-07 17:19:13,094 - ERROR -    • Add more regularization
+2025-08-07 17:19:13,095 - ERROR -    • Use simpler indicators
+2025-08-07 17:19:13,207 - INFO - Model saved to models/forex_model_20250807_171913.pkl
+2025-08-07 17:19:13,207 - INFO - Validation results saved to models/forex_model_20250807_171913_validation.json
+2025-08-07 17:19:13,207 - INFO - ================================================================================
+2025-08-07 17:19:13,207 - INFO - 🧪 Testing production model...
+2025-08-07 17:19:13,215 - ERROR -    • USDJPY: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 17:19:13,215 - INFO - Production-grade Forex AI training session ended.

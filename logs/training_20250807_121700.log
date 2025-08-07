@@ -1,0 +1,10 @@
+2025-08-07 12:17:00,829 - INFO - 📈 Loading forex data...
+2025-08-07 12:17:03,502 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 12:17:03,502 - INFO -    • EURUSD: 3068 data points (2025-02-07 11:00:00+00:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:17:03,502 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 12:17:03,502 - INFO - 🎯 Starting validation-only process...
+2025-08-07 12:17:03,502 - INFO - Starting walk-forward optimization...
+2025-08-07 12:17:03,502 - INFO - Walk-forward optimization for EURUSD
+2025-08-07 12:17:03,502 - INFO - Training window: 0-500, Test: 500-600
+2025-08-07 12:17:17,153 - ERROR - ❌ Error during training: mat1 and mat2 shapes cannot be multiplied (1x291 and 296x2048)
+2025-08-07 12:17:17,157 - INFO - Production-grade Forex AI training session ended.

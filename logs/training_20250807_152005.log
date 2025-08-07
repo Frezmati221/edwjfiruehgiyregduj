@@ -1,0 +1,39 @@
+2025-08-07 15:20:05,232 - INFO - 📈 Loading forex data...
+2025-08-07 15:20:09,711 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:20:09,711 - INFO -    • EURUSD: 12383 data points (2023-08-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:20:09,711 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 15:20:09,711 - INFO - 🎯 Starting full training process...
+2025-08-07 15:20:09,711 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:20:09,711 - INFO -    Training split: 80.0%
+2025-08-07 15:20:09,711 - INFO -    Testing split: 20.0%
+2025-08-07 15:20:09,711 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 15:20:09,711 - INFO -    📊 EURUSD data split:
+2025-08-07 15:20:09,711 - INFO -       Training: 9906 samples (2023-08-07 14:00:00+01:00 to 2025-03-14 09:00:00+00:00)
+2025-08-07 15:20:09,711 - INFO -       Testing:  2477 samples (2025-03-14 10:00:00+00:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:20:09,726 - INFO -    🔧 Initializing environment and agent for EURUSD...
+2025-08-07 15:20:09,729 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:20:10,280 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:20:10,280 - INFO -    🚀 Starting training for EURUSD (3 epochs)...
+2025-08-07 15:20:19,320 - INFO - 🧪 Testing EURUSD on UNSEEN data...
+2025-08-07 15:20:27,434 - INFO - ✅ EURUSD training completed!
+2025-08-07 15:20:27,434 - INFO -    📊 TRAINING metrics - Return: -0.04%, Sharpe: -431.37, Win Rate: 22.2%
+2025-08-07 15:20:27,434 - INFO -    🧪 TESTING metrics  - Return: -0.23%, Sharpe: -336.11, Win Rate: 23.5%
+2025-08-07 15:20:27,434 - INFO -    ✅ Good generalization for EURUSD (difference: -95.26)
+2025-08-07 15:20:27,434 - INFO - 
+================================================================================
+2025-08-07 15:20:27,434 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 15:20:27,434 - INFO - ================================================================================
+2025-08-07 15:20:27,434 - INFO - EURUSD:
+2025-08-07 15:20:27,434 - INFO -   📈 Training Return: -0.04% | Testing Return: -0.23%
+2025-08-07 15:20:27,435 - INFO -   📊 Training Sharpe: -431.37 | Testing Sharpe: -336.11
+2025-08-07 15:20:27,435 - INFO -   🎯 Training WinRate: 22.2% | Testing WinRate: 23.5%
+2025-08-07 15:20:27,435 - INFO -   📉 Training MaxDD: 0.0% | Testing MaxDD: 0.2%
+2025-08-07 15:20:27,435 - INFO -   🔍 Overfitting Score: -95.26
+2025-08-07 15:20:27,435 - INFO - 
+2025-08-07 15:20:27,435 - INFO - ✅ Good generalization across all pairs!
+2025-08-07 15:20:27,455 - INFO - Model saved to models/forex_model_20250807_152027.pkl
+2025-08-07 15:20:27,455 - INFO - Validation results saved to models/forex_model_20250807_152027_validation.json
+2025-08-07 15:20:27,456 - INFO - ================================================================================
+2025-08-07 15:20:27,456 - INFO - 🧪 Testing production model...
+2025-08-07 15:20:27,465 - ERROR -    • EURUSD: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 15:20:27,466 - INFO - Production-grade Forex AI training session ended.

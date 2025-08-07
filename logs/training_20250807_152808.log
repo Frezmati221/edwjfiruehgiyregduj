@@ -1,0 +1,50 @@
+2025-08-07 15:28:08,516 - INFO - 📈 Loading forex data...
+2025-08-07 15:28:10,657 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 15:28:10,658 - INFO -    • USDJPY: 1561 data points (2025-05-07 14:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:28:10,658 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 15:28:10,658 - INFO - 🎯 Starting full training process...
+2025-08-07 15:28:10,658 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 15:28:10,658 - INFO -    Training split: 80.0%
+2025-08-07 15:28:10,658 - INFO -    Testing split: 20.0%
+2025-08-07 15:28:10,658 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 15:28:10,658 - INFO -    📊 USDJPY data split:
+2025-08-07 15:28:10,658 - INFO -       Training: 1248 samples (2025-05-07 14:00:00+01:00 to 2025-07-21 09:00:00+01:00)
+2025-08-07 15:28:10,658 - INFO -       Testing:  313 samples (2025-07-21 10:00:00+01:00 to 2025-08-07 14:00:00+01:00)
+2025-08-07 15:28:10,666 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 15:28:10,669 - INFO -    ✅ Environment initialized. State size: 206
+2025-08-07 15:28:11,270 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 15:28:11,270 - INFO -    🚀 Starting training for USDJPY (25 epochs)...
+2025-08-07 15:29:19,522 - INFO - 
+    USDJPY Epoch 20 - Return: 47.64%, Sharpe: 0.97, Trades: 860
+2025-08-07 15:29:32,880 - INFO - 🧪 Testing USDJPY on UNSEEN data...
+2025-08-07 15:29:33,903 - INFO - ✅ USDJPY training completed!
+2025-08-07 15:29:33,903 - INFO -    📊 TRAINING metrics - Return: 61374.02%, Sharpe: 2.52, Win Rate: 28.1%
+2025-08-07 15:29:33,903 - INFO -    🧪 TESTING metrics  - Return: -82.39%, Sharpe: -0.20, Win Rate: 24.9%
+2025-08-07 15:29:33,903 - WARNING -    🚨 OVERFITTING DETECTED for USDJPY!
+2025-08-07 15:29:33,903 - WARNING -       Training Sharpe: 2.52
+2025-08-07 15:29:33,903 - WARNING -       Testing Sharpe: -0.20
+2025-08-07 15:29:33,903 - WARNING -       Difference: 2.72 (>1.0 indicates overfitting)
+2025-08-07 15:29:33,903 - INFO - 
+================================================================================
+2025-08-07 15:29:33,903 - INFO - 📊 COMPREHENSIVE TRAINING SUMMARY
+2025-08-07 15:29:33,903 - INFO - ================================================================================
+2025-08-07 15:29:33,903 - INFO - USDJPY:
+2025-08-07 15:29:33,904 - INFO -   📈 Training Return: 61374.02% | Testing Return: -82.39%
+2025-08-07 15:29:33,904 - INFO -   📊 Training Sharpe: 2.52 | Testing Sharpe: -0.20
+2025-08-07 15:29:33,904 - INFO -   🎯 Training WinRate: 28.1% | Testing WinRate: 24.9%
+2025-08-07 15:29:33,904 - INFO -   📉 Training MaxDD: 71.7% | Testing MaxDD: 90.5%
+2025-08-07 15:29:33,904 - INFO -   🔍 Overfitting Score: 2.72
+2025-08-07 15:29:33,904 - INFO - 
+2025-08-07 15:29:33,904 - ERROR - 🚨 SEVERE OVERFITTING DETECTED ACROSS MULTIPLE PAIRS!
+2025-08-07 15:29:33,904 - ERROR -    Model is likely to perform poorly in live trading.
+2025-08-07 15:29:33,904 - ERROR -    Recommendations:
+2025-08-07 15:29:33,904 - ERROR -    • Reduce model complexity
+2025-08-07 15:29:33,904 - ERROR -    • Increase training data
+2025-08-07 15:29:33,904 - ERROR -    • Add more regularization
+2025-08-07 15:29:33,904 - ERROR -    • Use simpler indicators
+2025-08-07 15:29:33,930 - INFO - Model saved to models/forex_model_20250807_152933.pkl
+2025-08-07 15:29:33,930 - INFO - Validation results saved to models/forex_model_20250807_152933_validation.json
+2025-08-07 15:29:33,930 - INFO - ================================================================================
+2025-08-07 15:29:33,931 - INFO - 🧪 Testing production model...
+2025-08-07 15:29:33,942 - ERROR -    • USDJPY: Error in prediction - only integers, slices (`:`), ellipsis (`...`), numpy.newaxis (`None`) and integer or boolean arrays are valid indices
+2025-08-07 15:29:33,943 - INFO - Production-grade Forex AI training session ended.

@@ -1,0 +1,60 @@
+2025-08-07 16:57:30,882 - INFO - 📈 Loading forex data...
+2025-08-07 16:57:31,873 - ERROR - $EURUSD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042651 and endTime=1754578651. The requested range must be within the last 60 days.")
+2025-08-07 16:57:32,246 - ERROR - $GBPUSD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042652 and endTime=1754578652. The requested range must be within the last 60 days.")
+2025-08-07 16:57:32,618 - ERROR - $USDJPY=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042652 and endTime=1754578652. The requested range must be within the last 60 days.")
+2025-08-07 16:57:32,957 - ERROR - $USDCHF=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042652 and endTime=1754578652. The requested range must be within the last 60 days.")
+2025-08-07 16:57:33,367 - ERROR - $AUDUSD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042653 and endTime=1754578653. The requested range must be within the last 60 days.")
+2025-08-07 16:57:33,716 - ERROR - $USDCAD=X: possibly delisted; no price data found  (period=1y) (Yahoo error = "5m data not available for startTime=1723042653 and endTime=1754578653. The requested range must be within the last 60 days.")
+2025-08-07 16:57:33,739 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 16:57:33,740 - INFO -    • USDJPY: 999 data points (0 to 998)
+2025-08-07 16:57:33,740 - INFO - 🎯 Initialized production-grade predictor for pairs: ['USDJPY']
+2025-08-07 16:57:33,740 - INFO - 🎯 Starting full training process...
+2025-08-07 16:57:33,740 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 16:57:33,740 - INFO -    Training split: 80.0%
+2025-08-07 16:57:33,740 - INFO -    Testing split: 20.0%
+2025-08-07 16:57:33,740 - INFO - Training USDJPY (1/1) with proper data split...
+2025-08-07 16:57:33,740 - INFO -    📊 USDJPY data split:
+2025-08-07 16:57:33,740 - INFO -       Training: 799 samples (0 to 798)
+2025-08-07 16:57:33,740 - INFO -       Testing:  200 samples (799 to 998)
+2025-08-07 16:57:33,750 - INFO -    🔧 Initializing environment and agent for USDJPY...
+2025-08-07 16:57:33,750 - INFO -    ✅ Environment initialized. State size: 20
+2025-08-07 16:57:34,282 - INFO -    ✅ Agent initialized. Memory size: 0
+2025-08-07 16:57:34,282 - INFO -    🚀 Starting training for USDJPY (1000 epochs)...
+2025-08-07 16:57:43,507 - INFO - 
+    USDJPY Epoch 20 - Return: -80.35%, Sharpe: 0.29, Trades: 448
+2025-08-07 16:57:52,916 - INFO - 
+    USDJPY Epoch 40 - Return: 1184.25%, Sharpe: 1.68, Trades: 977
+2025-08-07 16:58:02,704 - INFO - 
+    USDJPY Epoch 60 - Return: 538.69%, Sharpe: 1.43, Trades: 750
+2025-08-07 16:58:12,406 - INFO - 
+    USDJPY Epoch 80 - Return: 237.00%, Sharpe: 1.40, Trades: 975
+2025-08-07 16:58:22,668 - INFO - 
+    USDJPY Epoch 100 - Return: 227.98%, Sharpe: 1.38, Trades: 977
+2025-08-07 16:58:32,799 - INFO - 
+    USDJPY Epoch 120 - Return: -87.40%, Sharpe: -0.32, Trades: 246
+2025-08-07 16:58:43,102 - INFO - 
+    USDJPY Epoch 140 - Return: -10.32%, Sharpe: 1.00, Trades: 830
+2025-08-07 16:58:52,217 - INFO - 
+    USDJPY Epoch 160 - Return: -63.40%, Sharpe: 0.36, Trades: 398
+2025-08-07 16:59:03,033 - INFO - 
+    USDJPY Epoch 180 - Return: 5973.17%, Sharpe: 1.99, Trades: 975
+2025-08-07 16:59:13,690 - INFO - 
+    USDJPY Epoch 200 - Return: 24.09%, Sharpe: 1.19, Trades: 989
+2025-08-07 16:59:24,736 - INFO - 
+    USDJPY Epoch 220 - Return: 5.72%, Sharpe: 1.08, Trades: 890
+2025-08-07 16:59:35,934 - INFO - 
+    USDJPY Epoch 240 - Return: 1936.53%, Sharpe: 1.76, Trades: 983
+2025-08-07 16:59:47,228 - INFO - 
+    USDJPY Epoch 260 - Return: 699.99%, Sharpe: 1.55, Trades: 959
+2025-08-07 16:59:58,721 - INFO - 
+    USDJPY Epoch 280 - Return: 7.49%, Sharpe: 0.95, Trades: 726
+2025-08-07 17:00:10,577 - INFO - 
+    USDJPY Epoch 300 - Return: 5105.38%, Sharpe: 1.96, Trades: 977
+2025-08-07 17:00:22,659 - INFO - 
+    USDJPY Epoch 320 - Return: -93.57%, Sharpe: 0.07, Trades: 578
+2025-08-07 17:00:35,049 - INFO - 
+    USDJPY Epoch 340 - Return: -96.18%, Sharpe: -0.18, Trades: 534
+2025-08-07 17:00:47,127 - INFO - 
+    USDJPY Epoch 360 - Return: 1164.76%, Sharpe: 1.66, Trades: 968
+2025-08-07 17:00:58,405 - WARNING - ⚠️  Training interrupted by user
+2025-08-07 17:00:58,456 - INFO - Production-grade Forex AI training session ended.

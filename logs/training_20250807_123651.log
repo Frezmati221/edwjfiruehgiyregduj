@@ -1,0 +1,13 @@
+2025-08-07 12:36:51,454 - INFO - 📈 Loading forex data...
+2025-08-07 12:36:53,525 - INFO - ✅ Data loaded successfully for 1 pairs
+2025-08-07 12:36:53,525 - INFO -    • EURUSD: 3068 data points (2025-02-07 11:00:00+00:00 to 2025-08-07 11:00:00+01:00)
+2025-08-07 12:36:53,525 - INFO - 🎯 Initialized production-grade predictor for pairs: ['EURUSD']
+2025-08-07 12:36:53,525 - INFO - 🎯 Starting full training process...
+2025-08-07 12:36:53,525 - INFO - 🚨 IMPLEMENTING PROPER TRAIN/TEST SPLIT TO PREVENT OVERFITTING
+2025-08-07 12:36:53,525 - INFO -    Training split: 80.0%
+2025-08-07 12:36:53,525 - INFO -    Testing split: 20.0%
+2025-08-07 12:36:53,525 - INFO - Using walk-forward optimization for training...
+2025-08-07 12:37:09,920 - INFO - Training EURUSD (1/1) with proper data split...
+2025-08-07 12:37:09,920 - INFO -    📊 EURUSD data split:
+2025-08-07 12:37:09,920 - INFO -       Training: 2454 samples (2025-02-07 11:00:00+00:00 to 2025-07-02 16:00:00+01:00)
+2025-08-07 12:37:09,921 - INFO -       Testing:  614 samples (2025-07-02 17:00:00+01:00 to 2025-08-07 11:00:00+01:00)

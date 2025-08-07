@@ -1,0 +1,10 @@
+{
+  "initial_balance": 1000.0,
+  "final_balance": 32446.75172159783,
+  "total_return": 31446.75172159783,
+  "return_pct": 3144.675172159783,
+  "total_trades": 421,
+  "model_path": "best_model.pth",
+  "min_confidence": 0.5,
+  "timestamp": "20250807_235805"
+}
