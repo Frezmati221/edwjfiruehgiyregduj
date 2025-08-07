@@ -472,17 +472,17 @@ class ForexTradingAgent:
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
-                # Adaptive batch size based on GPU memory (optimized for accuracy)
+                # Balanced batch size based on GPU memory (optimized for stability)
         if device.type == 'cuda':
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
             if gpu_memory_gb >= 15:  # High-end GPU (RTX 5080, etc.)
-                self.batch_size = 2048  # Increased back for better learning quality
+                self.batch_size = 1024  # Balanced for stability and performance
             elif gpu_memory_gb >= 12:  # Mid-high GPU (RTX 4070, etc.)
-                self.batch_size = 1024  # Increased for better accuracy
+                self.batch_size = 512   # Balanced for good performance
             elif gpu_memory_gb >= 8:   # Mid-range GPU
-                self.batch_size = 512
-            else:  # Lower-end GPU
                 self.batch_size = 256
+            else:  # Lower-end GPU
+                self.batch_size = 128
         else:
             self.batch_size = 64
         
@@ -516,7 +516,7 @@ class ForexTradingAgent:
         print(f"💾 Memory buffer: {self.memory.maxlen:,} experiences")
         if self.scaler:
             print("⚡ Mixed precision training enabled")
-        print("🎯 OPTIMIZED FOR PREDICTION ACCURACY")
+        print("🎯 BALANCED TRAINING: ACCURACY + STABILITY")
         
     def update_target_network(self):
         """Copy weights from main network to target network"""
@@ -782,6 +782,14 @@ class ForexPredictor:
                 # Update target network periodically
                 if epoch % 10 == 0:
                     agent.update_target_network()
+                
+                # Early stopping if rewards get too negative (prevent spiraling)
+                if total_reward < -5000:
+                    print(f"\n⚠️  Early stopping due to poor performance (reward: {total_reward:.1f})")
+                    print("    🔄 Resetting environment and continuing...")
+                    # Reset the environment balance to prevent permanent damage
+                    env.balance = env.initial_balance
+                    total_reward = max(total_reward, -1000)  # Cap the negative reward
                 
                 # Track performance
                 rewards_history.append(total_reward)
