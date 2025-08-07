@@ -117,7 +117,7 @@ class SupervisedForexPredictor:
         self.scaler = StandardScaler()
         self.model = None
         self.sequence_length = 60  # Look at 60 candles of history
-        self.min_confidence = 0.7  # Only trade high-confidence patterns
+        self.min_confidence = 0.5  # Start with lower threshold, increase gradually
         
     def create_advanced_features(self, df):
         """Create comprehensive technical features for pattern recognition"""
@@ -303,7 +303,7 @@ class SupervisedForexPredictor:
         
         return np.array(X), np.array(y)
     
-    def train(self, data_dict, epochs=50, batch_size=32, learning_rate=0.001):
+    def train(self, data_dict, epochs=100, batch_size=32, learning_rate=0.0001):
         """Train the model on historical data"""
         
         all_features = []
@@ -384,8 +384,12 @@ class SupervisedForexPredictor:
         # Use weighted loss to handle class imbalance
         class_weights = self.calculate_class_weights(y_train)
         criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(class_weights).to(device))
-        optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.01)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, factor=0.5)
+        
+        # Confidence loss to encourage higher confidence predictions
+        confidence_criterion = nn.BCELoss()
+        
+        optimizer = optim.AdamW(self.model.parameters(), lr=learning_rate, weight_decay=0.001)
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=8, factor=0.7)
         
         # Training loop
         best_val_acc = 0
@@ -394,6 +398,7 @@ class SupervisedForexPredictor:
         print(f"\n🚀 Starting training with {len(train_dataset)} training samples...")
         print(f"   Validation samples: {len(val_dataset)}")
         print(f"   Confidence threshold: {self.min_confidence:.1%}")
+        print(f"   Target: Gradually increase confidence and accuracy")
         
         for epoch in range(epochs):
             # Training
@@ -411,18 +416,29 @@ class SupervisedForexPredictor:
                 optimizer.zero_grad()
                 logits, confidence = self.model(features)
                 
-                loss = criterion(logits, labels)
-                loss.backward()
+                # Classification loss
+                classification_loss = criterion(logits, labels)
+                
+                # Confidence loss - encourage higher confidence for correct predictions
+                _, predicted = torch.max(logits, 1)
+                correct_mask = (predicted == labels).float()
+                
+                # Target confidence should be high for correct predictions, moderate for incorrect
+                target_confidence = correct_mask * 0.8 + (1 - correct_mask) * 0.3
+                confidence_loss = confidence_criterion(confidence.squeeze(), target_confidence)
+                
+                # Combined loss
+                total_loss = classification_loss + 0.1 * confidence_loss
+                total_loss.backward()
                 
                 # Gradient clipping
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
                 
                 optimizer.step()
                 
-                train_loss += loss.item()
+                train_loss += total_loss.item()
                 
                 # Calculate accuracy
-                _, predicted = torch.max(logits, 1)
                 train_correct += (predicted == labels).sum().item()
                 
                 # Calculate high-confidence accuracy
@@ -431,7 +447,7 @@ class SupervisedForexPredictor:
                     train_confident_correct += ((predicted == labels) & high_conf_mask).sum().item()
                     train_confident_total += high_conf_mask.sum().item()
                 
-                pbar.set_postfix({'loss': loss.item()})
+                pbar.set_postfix({'loss': total_loss.item(), 'conf_avg': confidence.mean().item():.3f})
             
             # Validation
             self.model.eval()
@@ -439,6 +455,7 @@ class SupervisedForexPredictor:
             val_correct = 0
             val_confident_correct = 0
             val_confident_total = 0
+            avg_confidence = 0
             
             with torch.no_grad():
                 for features, labels in val_loader:
@@ -446,12 +463,21 @@ class SupervisedForexPredictor:
                     labels = labels.long().to(device)
                     
                     logits, confidence = self.model(features)
-                    loss = criterion(logits, labels)
                     
-                    val_loss += loss.item()
+                    # Classification loss
+                    classification_loss = criterion(logits, labels)
                     
+                    # Confidence loss
                     _, predicted = torch.max(logits, 1)
+                    correct_mask = (predicted == labels).float()
+                    target_confidence = correct_mask * 0.8 + (1 - correct_mask) * 0.3
+                    confidence_loss = confidence_criterion(confidence.squeeze(), target_confidence)
+                    
+                    total_loss = classification_loss + 0.1 * confidence_loss
+                    val_loss += total_loss.item()
+                    
                     val_correct += (predicted == labels).sum().item()
+                    avg_confidence += confidence.mean().item()
                     
                     # High-confidence accuracy
                     high_conf_mask = confidence.squeeze() > self.min_confidence
@@ -462,6 +488,7 @@ class SupervisedForexPredictor:
             # Calculate metrics
             train_acc = train_correct / len(train_dataset)
             val_acc = val_correct / len(val_dataset)
+            avg_confidence = avg_confidence / len(val_loader)
             
             train_conf_acc = train_confident_correct / train_confident_total if train_confident_total > 0 else 0
             val_conf_acc = val_confident_correct / val_confident_total if val_confident_total > 0 else 0
@@ -470,22 +497,29 @@ class SupervisedForexPredictor:
             print(f"  Train Loss: {train_loss/len(train_loader):.4f}, Acc: {train_acc:.2%}, High-Conf Acc: {train_conf_acc:.2%}")
             print(f"  Val Loss: {val_loss/len(val_loader):.4f}, Acc: {val_acc:.2%}, High-Conf Acc: {val_conf_acc:.2%}")
             print(f"  High-Conf Trades: {val_confident_total}/{len(val_dataset)} ({val_confident_total/len(val_dataset):.1%})")
+            print(f"  Avg Confidence: {avg_confidence:.1%}")
             
             scheduler.step(val_loss)
             
-            # Early stopping based on high-confidence accuracy
-            if val_conf_acc > best_val_acc:
-                best_val_acc = val_conf_acc
+            # Gradually increase confidence threshold
+            if epoch > 20 and avg_confidence > 0.6 and self.min_confidence < 0.7:
+                self.min_confidence = min(0.7, self.min_confidence + 0.02)
+                print(f"  📈 Increased confidence threshold to {self.min_confidence:.1%}")
+            
+            # Early stopping based on validation accuracy (not just confidence)
+            combined_score = val_acc + val_conf_acc * 0.5 + avg_confidence * 0.3
+            if combined_score > best_val_acc:
+                best_val_acc = combined_score
                 patience_counter = 0
                 # Save best model
                 try:
                     self.save_model('best_model.pth')
-                    print(f"  💾 Best model saved (High-Conf Acc: {val_conf_acc:.2%})")
+                    print(f"  💾 Best model saved (Combined Score: {combined_score:.3f})")
                 except Exception as e:
                     print(f"  ⚠️ Failed to save model: {e}")
             else:
                 patience_counter += 1
-                if patience_counter >= 10:
+                if patience_counter >= 15:  # Increased patience
                     print("⏹️ Early stopping triggered")
                     break
         
@@ -822,8 +856,8 @@ def demonstrate_sl_tp_system(predictor, data_dict):
     for pair, df in data_dict.items():
         print(f"\n📊 {pair} Analysis:")
         
-        # Get prediction with SL/TP
-        prediction = predictor.predict(df, min_confidence=0.7, risk_reward_ratio=2.0)
+        # Get prediction with SL/TP (use current model's confidence threshold)
+        prediction = predictor.predict(df, min_confidence=predictor.min_confidence, risk_reward_ratio=2.0)
         
         if prediction['action'] != 'hold':
             current_price = df['close'].iloc[-1]
@@ -872,7 +906,7 @@ if __name__ == "__main__":
     
     # Train model
     print("\n🚀 Training pattern recognition model...")
-    predictor.train(data, epochs=50, batch_size=64, learning_rate=0.001)
+    predictor.train(data, epochs=100, batch_size=64, learning_rate=0.0001)
     
     # Demonstrate SL/TP system
     demonstrate_sl_tp_system(predictor, data)
