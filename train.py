@@ -472,17 +472,17 @@ class ForexTradingAgent:
         self.learning_rate = learning_rate
         self.gamma = 0.95
         
-                # Adaptive batch size based on GPU memory (optimized for performance)
+                # Adaptive batch size based on GPU memory (optimized for consistent performance)
         if device.type == 'cuda':
             gpu_memory_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
             if gpu_memory_gb >= 15:  # High-end GPU (RTX 5080, etc.)
-                self.batch_size = 2048  # Increased significantly for better GPU utilization
+                self.batch_size = 1024  # Reduced from 2048 for consistent performance
             elif gpu_memory_gb >= 12:  # Mid-high GPU (RTX 4070, etc.)
-                self.batch_size = 1024  # Increased for better performance
+                self.batch_size = 512   # Reduced from 1024 for better consistency
             elif gpu_memory_gb >= 8:   # Mid-range GPU
-                self.batch_size = 512
-            else:  # Lower-end GPU
                 self.batch_size = 256
+            else:  # Lower-end GPU
+                self.batch_size = 128
         else:
             self.batch_size = 64
         
@@ -571,24 +571,41 @@ class ForexTradingAgent:
         return TradingAction(direction, tp, sl, confidence)
     
     def replay(self):
-        """Train the network on batch of experiences with optimized performance"""
+        """Train the network on batch of experiences with ultra-optimized performance"""
         if len(self.memory) < self.batch_size:
             return
         
         try:
-            # Single batch training for consistent performance
-            batch = random.sample(self.memory, self.batch_size)
+            # Pre-sample and prepare batch for maximum efficiency
+            batch_indices = random.sample(range(len(self.memory)), self.batch_size)
+            batch = [self.memory[i] for i in batch_indices]
             
-            # Preprocess batch data efficiently
-            states = torch.FloatTensor([e[0] for e in batch]).to(device, non_blocking=True)
-            next_states = torch.FloatTensor([e[3] for e in batch]).to(device, non_blocking=True)
-            rewards = torch.FloatTensor([e[2] for e in batch]).to(device, non_blocking=True)
-            dones = torch.FloatTensor([e[4] for e in batch]).to(device, non_blocking=True)
+            # Efficient batch preprocessing with reduced allocations
+            states_list = []
+            next_states_list = []
+            rewards_list = []
+            dones_list = []
+            actions_list = []
             
-            # Create action indices efficiently
-            actions = torch.LongTensor([[
-                0 if e[1].direction == 'long' else 1 if e[1].direction == 'short' else 2
-            ] for e in batch]).to(device, non_blocking=True)
+            for e in batch:
+                states_list.append(e[0])
+                next_states_list.append(e[3])
+                rewards_list.append(e[2])
+                dones_list.append(e[4])
+                # Inline action encoding for speed
+                if e[1].direction == 'long':
+                    actions_list.append(0)
+                elif e[1].direction == 'short':
+                    actions_list.append(1)
+                else:
+                    actions_list.append(2)
+            
+            # Single tensor creation calls for better performance
+            states = torch.FloatTensor(states_list).to(device, non_blocking=True)
+            next_states = torch.FloatTensor(next_states_list).to(device, non_blocking=True)
+            rewards = torch.FloatTensor(rewards_list).to(device, non_blocking=True)
+            dones = torch.FloatTensor(dones_list).to(device, non_blocking=True)
+            actions = torch.LongTensor(actions_list).unsqueeze(1).to(device, non_blocking=True)
             
             self.optimizer.zero_grad()
             
@@ -598,14 +615,12 @@ class ForexTradingAgent:
                     with torch.no_grad():
                         next_q_values = self.target_network(next_states)
                     
-                    # Calculate target Q-values
-                    target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
-                    
-                    # Calculate loss
+                    # Streamlined Q-value calculation
+                    target_q_values = rewards + (1 - dones) * self.gamma * next_q_values[0].max(1)[0]
                     current_q = current_q_values[0].gather(1, actions).squeeze()
                     loss = nn.MSELoss()(current_q, target_q_values.detach())
                 
-                # Single step training
+                # Efficient single-step training
                 self.scaler.scale(loss).backward()
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
@@ -614,19 +629,18 @@ class ForexTradingAgent:
                 with torch.no_grad():
                     next_q_values = self.target_network(next_states)
                 
-                # Calculate target Q-values
-                target_q_values = rewards + (1 - dones) * self.gamma * torch.max(next_q_values[0], dim=1)[0]
-                
-                # Calculate loss
+                # Streamlined Q-value calculation
+                target_q_values = rewards + (1 - dones) * self.gamma * next_q_values[0].max(1)[0]
                 current_q = current_q_values[0].gather(1, actions).squeeze()
                 loss = nn.MSELoss()(current_q, target_q_values.detach())
                 
-                # Single step training
+                # Efficient single-step training
                 loss.backward()
                 self.optimizer.step()
             
-            # Clear tensors immediately after use
-            del states, next_states, rewards, dones, actions
+            # Immediate cleanup for memory efficiency
+            del states, next_states, rewards, dones, actions, states_list, next_states_list
+            del rewards_list, dones_list, actions_list
             
         except torch.cuda.OutOfMemoryError:
             # Handle OOM gracefully
@@ -701,26 +715,28 @@ class ForexPredictor:
                             torch.cuda.empty_cache()
                         break
                     
-                    # Train with adaptive frequency based on memory buffer size
-                    # Start training only when we have enough diverse experiences
-                    min_training_memory = agent.batch_size * 5  # Need 5x batch size before training
+                    # Ultra-conservative training to maintain consistent performance
+                    # Only train when absolutely necessary and with maximum efficiency
+                    min_training_memory = agent.batch_size * 10  # Need 10x batch size before any training
                     
                     if len(agent.memory) > min_training_memory:
-                        # Adaptive training frequency - less frequent as buffer grows
-                        training_frequency = max(20, min(50, len(agent.memory) // 2000))  # 20-50 steps
+                        # Much less frequent training - prioritize consistent speed over frequent learning
+                        base_frequency = 100  # Start with very infrequent training
+                        buffer_factor = min(5, len(agent.memory) // 10000)  # Scale with buffer size
+                        training_frequency = base_frequency + (buffer_factor * 50)  # 100-350 steps
                         
                         if steps % training_frequency == 0:
                             training_start = time.time()
-                            max_training_time = 10  # Stricter timeout
+                            max_training_time = 3  # Very strict timeout for consistent performance
                             
                             try:
-                                # Only train if we haven't trained recently
+                                # Single efficient training call with timeout protection
                                 agent.replay()
                                     
                                 training_time = time.time() - training_start
                                 
                                 if training_time > max_training_time:
-                                    print(f"⚠️  Training took {training_time:.1f}s - reducing frequency")
+                                    print(f"⚠️  Training took {training_time:.1f}s - increasing frequency gap")
                                     
                             except Exception as e:
                                 print(f"⚠️  Training failed: {str(e)} - skipping training")
