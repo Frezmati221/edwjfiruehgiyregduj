@@ -28,7 +28,7 @@ class RealisticForexBacktester:
         self.equity_curve = []
         self.trades_history = []
         self.model_path = model_path
-        self.agents = {}
+        self.predictor = None  # Will be loaded in load_model()
         self.indicators = ForexIndicators()
         
         # Trading parameters for more active trading
@@ -63,21 +63,25 @@ class RealisticForexBacktester:
     def load_model(self):
         """Load the trained DQN model"""
         try:
-            checkpoint = torch.load(self.model_path, map_location='cpu')
-            print(f"✅ Model loaded: {list(checkpoint['agents'].keys())}")
+            # Import ForexPredictor from train module
+            from train import ForexPredictor
             
-            self.agents = {}
-            for pair, agent_data in checkpoint['agents'].items():
-                state_size = agent_data['q_network']['feature_extractor.0.weight'].shape[1]
-                agent = ForexTradingAgent(state_size)
-                agent.q_network.load_state_dict(agent_data['q_network'])
-                agent.target_network.load_state_dict(agent_data['target_network'])
-                agent.epsilon = 0.15  # Increased exploration for more trading signals
-                agent.q_network.eval()
-                self.agents[pair] = agent
+            # Create predictor and load the model
+            self.predictor = ForexPredictor()
+            self.predictor.load_model(self.model_path)
+            
+            print(f"✅ Model loaded: {list(self.predictor.agents.keys())}")
+            print(f"🎯 Available pairs: {self.predictor.pairs}")
+            
+            # Set epsilon for more trading activity
+            for pair, agent in self.predictor.agents.items():
+                agent.epsilon = 0.3  # Increased exploration for more trading signals
+                print(f"   📊 {pair}: Epsilon set to {agent.epsilon}")
                 
         except Exception as e:
             print(f"❌ Failed to load model: {e}")
+            import traceback
+            traceback.print_exc()
             raise
     
     def get_pip_value(self, pair: str, price: float) -> float:
@@ -130,46 +134,35 @@ class RealisticForexBacktester:
                 
         return True
     
-    def get_model_prediction(self, state: np.ndarray, pair: str) -> int:
+    def get_model_prediction(self, df_recent: pd.DataFrame, pair: str) -> int:
         """Get prediction from trained model with trading bias"""
         try:
-            agent_pair = pair.replace('=X', '')
-            if agent_pair not in self.agents:
+            # Clean pair name for prediction
+            clean_pair = pair.replace('=X', '')
+            
+            if clean_pair not in self.predictor.pairs:
+                print(f"⚠️ Pair {clean_pair} not in trained model")
                 return 0
                 
-            agent = self.agents[agent_pair]
-            state_tensor = torch.FloatTensor(state).unsqueeze(0)
+            # Get prediction using the predictor's predict method
+            action = self.predictor.predict(clean_pair, df_recent)
             
-            with torch.no_grad():
-                direction_q, tp_q, sl_q = agent.q_network(state_tensor)
-                
-                # Get Q-values for each action
-                q_values = direction_q[0]  # [long, short, hold]
-                
-                # Apply trading bias: reduce hold preference significantly
-                q_values_biased = q_values.clone()
-                q_values_biased[2] -= 2.0  # Strongly discourage holding
-                
-                # Add confidence threshold: only trade if significantly better than hold
-                long_confidence = q_values[0] - q_values[2]
-                short_confidence = q_values[1] - q_values[2]
-                
-                # More aggressive trading: lower confidence threshold
-                confidence_threshold = 0.1  # Was implicitly higher
-                
-                if long_confidence > confidence_threshold:
-                    return 1  # Buy signal
-                elif short_confidence > confidence_threshold:
-                    return 2  # Sell signal
-                else:
-                    # Still occasionally trade even with low confidence (25% chance)
-                    if np.random.random() < 0.25:
-                        return np.random.choice([1, 2])  # Random buy/sell
-                    return 0  # Hold
+            # Map direction to integer
+            if action.direction == 'long':
+                return 1  # Buy signal
+            elif action.direction == 'short':
+                return 2  # Sell signal
+            else:
+                # Force some trading activity - if model says hold too often, randomly trade
+                if np.random.random() < 0.2:  # 20% chance to override hold
+                    print(f"🎲 Forcing random trade instead of hold")
+                    return np.random.choice([1, 2])
+                return 0  # Hold
             
         except Exception as e:
+            print(f"⚠️ Prediction error for {pair}: {str(e)}")
             # On error, sometimes trade instead of always holding
-            if np.random.random() < 0.3:
+            if np.random.random() < 0.1:  # 10% chance to trade on error
                 return np.random.choice([1, 2])
             return 0
     
@@ -366,18 +359,16 @@ class RealisticForexBacktester:
             # Generate trading signals if no position and can trade
             if not self.current_position and self.can_trade(timestamp):
                 try:
-                    # Get recent data for state
-                    recent_data = df.iloc[max(0, i-49):i+1]  # Last 50 candles
+                    # Get recent data for prediction (use more data)
+                    recent_data = df.iloc[max(0, i-100):i+1]  # Last 100+ candles
                     if len(recent_data) < 50:
                         continue
                         
-                    # Create environment state
-                    temp_env = ForexEnvironment(recent_data)
-                    temp_env.current_step = len(recent_data) - 1
-                    state = temp_env._get_state()
+                    # Prepare data with indicators for prediction
+                    prepared_data = self.predictor.prepare_data(recent_data.copy())
                     
-                    # Get model prediction
-                    action = self.get_model_prediction(state, pair)
+                    # Get model prediction using recent prepared data
+                    action = self.get_model_prediction(prepared_data, pair)
                     signals_generated += 1
                     
                     # Count actions
@@ -394,6 +385,7 @@ class RealisticForexBacktester:
                         trades_attempted += 1
                         
                 except Exception as e:
+                    print(f"⚠️ Error at step {i}: {str(e)}")
                     continue
             
             # Progress update
