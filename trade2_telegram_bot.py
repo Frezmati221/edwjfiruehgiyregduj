@@ -8,6 +8,7 @@ import asyncio
 import logging
 import yfinance as yf
 import pandas as pd
+import numpy as np
 from datetime import datetime, timedelta
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -169,8 +170,74 @@ Use the buttons below for instant predictions and signals!
             await loading_msg.edit_text(f"❌ Error getting prediction: {str(e)}")
             logger.error(f"Prediction error: {e}")
     
+    def calculate_optimal_entry(self, df: pd.DataFrame, action: str, current_price: float, pair: str) -> dict:
+        """Calculate optimal entry price based on market conditions"""
+        import talib
+        
+        # Get recent price data
+        close_prices = df['close'].values[-50:].astype(np.float64)
+        high_prices = df['high'].values[-50:].astype(np.float64)
+        low_prices = df['low'].values[-50:].astype(np.float64)
+        
+        # Calculate support/resistance levels
+        resistance_20 = df['high'].rolling(20).max().iloc[-1]
+        support_20 = df['low'].rolling(20).min().iloc[-1]
+        
+        # Calculate ATR for volatility assessment
+        atr = talib.ATR(high_prices, low_prices, close_prices, timeperiod=14)[-1]
+        
+        # Get pip value for this pair
+        pip_value = self.get_pip_value(pair, current_price)
+        
+        # Calculate entry suggestions
+        entry_suggestions = {
+            'current_price': current_price,
+            'market_entry': current_price,  # Immediate market entry
+            'optimal_entry': current_price,  # Will be calculated
+            'entry_type': 'MARKET',
+            'support_level': support_20,
+            'resistance_level': resistance_20,
+            'atr': atr,
+            'entry_distance_pips': 0
+        }
+        
+        if action == 'long':
+            # For LONG positions, suggest entry on pullbacks
+            pullback_entry = current_price - (atr * 0.3)  # 30% ATR pullback
+            
+            # Choose the better entry (closer to support but not too far from current)
+            if pullback_entry > support_20 and (current_price - pullback_entry) / current_price < 0.005:  # Within 0.5%
+                entry_suggestions['optimal_entry'] = pullback_entry
+                entry_suggestions['entry_type'] = 'LIMIT'
+                entry_suggestions['entry_distance_pips'] = (current_price - pullback_entry) / pip_value
+            else:
+                entry_suggestions['optimal_entry'] = current_price
+                entry_suggestions['entry_type'] = 'MARKET'
+                
+        elif action == 'short':
+            # For SHORT positions, suggest entry on bounces
+            bounce_entry = current_price + (atr * 0.3)  # 30% ATR bounce
+            
+            # Choose the better entry (closer to resistance but not too far from current)
+            if bounce_entry < resistance_20 and (bounce_entry - current_price) / current_price < 0.005:  # Within 0.5%
+                entry_suggestions['optimal_entry'] = bounce_entry
+                entry_suggestions['entry_type'] = 'LIMIT'
+                entry_suggestions['entry_distance_pips'] = (bounce_entry - current_price) / pip_value
+            else:
+                entry_suggestions['optimal_entry'] = current_price
+                entry_suggestions['entry_type'] = 'MARKET'
+        
+        return entry_suggestions
+
+    def get_pip_value(self, pair: str, price: float) -> float:
+        """Calculate pip value for the pair"""
+        if 'JPY' in pair:
+            return 0.01  # For JPY pairs
+        else:
+            return 0.0001  # For other major pairs
+
     async def get_prediction(self, pair: str, confidence: float = 0.5):
-        """Get prediction for a forex pair"""
+        """Get enhanced prediction with optimal entry suggestions for a forex pair"""
         try:
             # Get recent data
             symbol = self.forex_pairs[pair]
@@ -191,7 +258,12 @@ Use the buttons below for instant predictions and signals!
             price_change = df['close'].iloc[-1] - df['close'].iloc[-2]
             price_change_pct = (price_change / df['close'].iloc[-2]) * 100
             
-            return {
+            # Calculate optimal entry if we have a trading signal
+            entry_info = None
+            if prediction['action'] != 'hold':
+                entry_info = self.calculate_optimal_entry(df, prediction['action'], current_price, pair)
+            
+            result = {
                 'pair': pair,
                 'current_price': current_price,
                 'price_change': price_change,
@@ -201,24 +273,31 @@ Use the buttons below for instant predictions and signals!
                 'data_points': len(df)
             }
             
+            # Add enhanced entry information
+            if entry_info:
+                result['entry_info'] = entry_info
+            
+            return result
+            
         except Exception as e:
             logger.error(f"Error getting prediction for {pair}: {e}")
             raise
     
     def format_prediction_message(self, pair: str, data: dict) -> str:
-        """Format prediction data into a nice message"""
+        """Format prediction data into a nice message with entry suggestions"""
         pred = data['prediction']
         
         # Market info
         price_emoji = "📈" if data['price_change'] > 0 else "📉" if data['price_change'] < 0 else "➡️"
         
         message = f"""
-🎯 **{pair} Analysis**
+🎯 **{pair} AI Analysis**
 
-💹 **Current Market:**
+💹 **Market Status:**
 {price_emoji} Price: `{data['current_price']:.5f}`
 📊 Change: `{data['price_change']:+.5f}` ({data['price_change_pct']:+.2f}%)
 🕐 Updated: {data['timestamp'].strftime('%H:%M:%S UTC')}
+📈 Data Points: {data['data_points']}
 
 🤖 **AI Prediction:**
         """
@@ -241,6 +320,29 @@ Use the buttons below for instant predictions and signals!
 🎯 Confidence: {confidence:.1%}
             """
             
+            # Add entry suggestions if available
+            if 'entry_info' in data:
+                entry = data['entry_info']
+                message += f"""
+
+📍 **Entry Strategy:**
+                """
+                
+                if entry['entry_type'] == 'MARKET':
+                    message += f"""🟢 **MARKET ORDER**: `{entry['market_entry']:.5f}`
+💡 Enter immediately - optimal conditions detected
+                    """
+                else:
+                    message += f"""🟡 **LIMIT ORDER**: `{entry['optimal_entry']:.5f}`
+📏 Distance: {entry['entry_distance_pips']:.1f} pips from current
+💡 Wait for better price - potential improvement available
+                    """
+                
+                message += f"""
+🔺 Resistance: `{entry['resistance_level']:.5f}`
+🔻 Support: `{entry['support_level']:.5f}`
+                """
+            
             # Add SL/TP if available
             if 'stop_loss' in pred and 'take_profit' in pred:
                 sl = pred['stop_loss']
@@ -250,7 +352,9 @@ Use the buttons below for instant predictions and signals!
                 reward_pips = pred.get('reward_pips', 0)
                 
                 message += f"""
-🛡️ Stop Loss: `{sl:.5f}` ({risk_pips:.1f} pips)
+
+🛡️ **Risk Management:**
+🛑 Stop Loss: `{sl:.5f}` ({risk_pips:.1f} pips)
 🎯 Take Profit: `{tp:.5f}` ({reward_pips:.1f} pips)
 📊 Risk:Reward: `1:{rr:.2f}`
                 """
@@ -446,7 +550,7 @@ Click any pair for instant prediction:
             )
     
     async def show_all_signals(self, query, user_id: int):
-        """Show all trading signals (BUY/SELL only, no HOLD)"""
+        """Show all trading signals (BUY/SELL only, no HOLD) with entry suggestions"""
         user_conf = self.user_settings.get(user_id, {}).get('confidence', self.default_confidence)
         
         # Show loading message
@@ -463,7 +567,7 @@ Click any pair for instant prediction:
                     
                     # Only include BUY/SELL signals, skip HOLD
                     if pred['action'].upper() != 'HOLD':
-                        signals.append({
+                        signal_data = {
                             'pair': pair,
                             'action': pred['action'].upper(),
                             'confidence': pred['confidence'],
@@ -472,7 +576,14 @@ Click any pair for instant prediction:
                             'stop_loss': pred.get('stop_loss'),
                             'take_profit': pred.get('take_profit'),
                             'risk_reward_ratio': pred.get('risk_reward_ratio', 0)
-                        })
+                        }
+                        
+                        # Add entry info if available
+                        if 'entry_info' in prediction_data:
+                            signal_data['entry_info'] = prediction_data['entry_info']
+                        
+                        signals.append(signal_data)
+                        
                 except Exception as e:
                     logger.error(f"Error getting signal for {pair}: {e}")
                     continue
@@ -492,6 +603,16 @@ Click any pair for instant prediction:
 {action_emoji} **{signal['pair']} - {signal['action']}**
 💹 Price: `{signal['current_price']:.5f}` {price_emoji}`{signal['price_change_pct']:+.2f}%`
 🎯 Confidence: `{signal['confidence']:.1%}`"""
+                    
+                    # Add entry info if available
+                    if 'entry_info' in signal:
+                        entry = signal['entry_info']
+                        if entry['entry_type'] == 'MARKET':
+                            message += f"""
+📍 Entry: 🟢 **MARKET** `{entry['market_entry']:.5f}`"""
+                        else:
+                            message += f"""
+📍 Entry: 🟡 **LIMIT** `{entry['optimal_entry']:.5f}` ({entry['entry_distance_pips']:.1f} pips)"""
                     
                     # Add SL/TP if available
                     if signal['stop_loss'] and signal['take_profit']:

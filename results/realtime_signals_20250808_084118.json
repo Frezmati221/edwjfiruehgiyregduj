@@ -1,0 +1,21 @@
+{
+  "timestamp": "20250808_084118",
+  "confidence_threshold": 0.3,
+  "signals": [
+    {
+      "pair": "EURUSD=X",
+      "timestamp": "2025-08-08T08:41:18.741338",
+      "action": "hold",
+      "confidence": 0.5435450077056885,
+      "current_price": 1.1650937795639038,
+      "daily_change_pct": -0.19807182991126646,
+      "status": "hold"
+    }
+  ],
+  "summary": {
+    "total_pairs": 1,
+    "active_signals": 0,
+    "hold_signals": 1,
+    "errors": 0
+  }
+}
