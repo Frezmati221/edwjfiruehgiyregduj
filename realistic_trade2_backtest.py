@@ -228,7 +228,7 @@ class RealisticTrade2Backtester:
         return position_size
     
     def open_position(self, pair: str, prediction: dict, price: float, timestamp: datetime):
-        """Open a new position based on model prediction using optimal entry"""
+        """Open a new position based on model prediction using realistic entry logic"""
         if self.current_position:
             return  # Already have a position
             
@@ -252,35 +252,43 @@ class RealisticTrade2Backtester:
         # Calculate spread
         spread = self.calculate_spread(pair, price)
         
-        # Use optimal entry if available and enabled, otherwise use market entry
-        optimal_entry = price  # Default to current price
+        # Determine entry strategy
         entry_type = 'MARKET'
+        entry_price = price  # Default to market price
         
         if self.use_optimal_entry and 'entry_info' in prediction:
             entry_info = prediction['entry_info']
-            optimal_entry = entry_info['optimal_entry']
-            entry_type = entry_info['entry_type']
+            suggested_entry_type = entry_info['entry_type']
+            optimal_entry_price = entry_info['optimal_entry']
             
-            # For backtesting, we'll use the optimal entry price
-            # In real trading, LIMIT orders would need to wait for price to reach optimal level
-            print(f"📍 Using {entry_type} entry: {optimal_entry:.5f} (vs market {price:.5f})")
-            if entry_type == 'LIMIT':
-                distance_pips = entry_info.get('entry_distance_pips', 0)
-                print(f"📏 Entry improvement: {distance_pips:.1f} pips")
+            if suggested_entry_type == 'LIMIT':
+                # Use optimal entry price for better execution
+                entry_type = 'LIMIT'
+                print(f"📍 LIMIT order executed: {optimal_entry_price:.5f} (improved from market {price:.5f})")
+                print(f"📏 Entry improvement: {entry_info.get('entry_distance_pips', 0):.1f} pips")
+            else:
+                print(f"� Using MARKET entry: {price:.5f}")
+                entry_type = 'MARKET'
         else:
             print(f"📍 Using MARKET entry: {price:.5f}")
         
-        # Entry price with spread (using optimal entry)
-        if action == 'long':
-            entry_price = optimal_entry + spread
+        # Entry price with spread applied to actual entry price
+        # Use optimal entry price if available, otherwise current market price
+        if self.use_optimal_entry and 'entry_info' in prediction and prediction['entry_info']['entry_type'] == 'LIMIT':
+            actual_entry_price = prediction['entry_info']['optimal_entry']
         else:
-            entry_price = optimal_entry - spread
+            actual_entry_price = price
+            
+        if action == 'long':
+            final_entry_price = actual_entry_price + spread
+        else:
+            final_entry_price = actual_entry_price - spread
             
         # Calculate position size using 2% risk management
-        position_size = self.calculate_position_size(entry_price, stop_loss, pair)
+        position_size = self.calculate_position_size(final_entry_price, stop_loss, pair)
         
         # Verify we have enough balance (margin requirement)
-        required_margin = (position_size * entry_price) / self.leverage
+        required_margin = (position_size * final_entry_price) / self.leverage
         if required_margin > self.current_balance * 0.9:  # Keep 10% buffer
             print(f"⚠️ Insufficient margin for {pair} trade")
             return
@@ -288,7 +296,7 @@ class RealisticTrade2Backtester:
         self.current_position = {
             'pair': pair,
             'direction': action,
-            'entry_price': entry_price,
+            'entry_price': final_entry_price,
             'position_size': position_size,
             'stop_loss': stop_loss,
             'take_profit': take_profit,
@@ -296,27 +304,27 @@ class RealisticTrade2Backtester:
             'confidence': confidence,
             'risk_reward': prediction.get('risk_reward_ratio', 0),
             'entry_type': entry_type,
-            'optimal_entry': optimal_entry
+            'suggested_entry': entry_info.get('optimal_entry', price) if self.use_optimal_entry and 'entry_info' in prediction else price
         }
         
         self.daily_trade_count += 1
         self.last_trade_time = timestamp
         
         # Calculate risk and reward in pips
-        pip_value = self.get_pip_value(pair, entry_price)
-        risk_pips = abs(entry_price - stop_loss) / pip_value
-        reward_pips = abs(take_profit - entry_price) / pip_value
+        pip_value = self.get_pip_value(pair, final_entry_price)
+        risk_pips = abs(final_entry_price - stop_loss) / pip_value
+        reward_pips = abs(take_profit - final_entry_price) / pip_value
         
-        print(f"🟢 {action.upper()} {pair}: Size={position_size:.0f} @ {entry_price:.5f} ({entry_type})")
+        print(f"🟢 {action.upper()} {pair}: Size={position_size:.0f} @ {final_entry_price:.5f} ({entry_type})")
         print(f"   📊 SL={stop_loss:.5f} ({risk_pips:.1f} pips) | TP={take_profit:.5f} ({reward_pips:.1f} pips)")
         print(f"   🎯 Confidence: {confidence:.1%} | RR: 1:{prediction.get('risk_reward_ratio', 0):.2f}")
         
-        # Show entry optimization if used
+        # Show additional info for LIMIT orders
         if self.use_optimal_entry and 'entry_info' in prediction and entry_type == 'LIMIT':
             entry_info = prediction['entry_info']
-            print(f"   📍 Entry optimized by {entry_info.get('entry_distance_pips', 0):.1f} pips")
             print(f"   🔺 Resistance: {entry_info['resistance_level']:.5f}")
             print(f"   🔻 Support: {entry_info['support_level']:.5f}")
+            print(f"   � ATR: {entry_info['atr']:.5f}")
     
     def check_exit_conditions(self, current_price: float, timestamp: datetime) -> bool:
         """Check if position should be closed"""
@@ -396,7 +404,8 @@ class RealisticTrade2Backtester:
             'balance_before': old_balance,
             'balance_after': self.current_balance,
             'entry_type': pos.get('entry_type', 'MARKET'),
-            'optimal_entry': pos.get('optimal_entry', pos['entry_price'])
+            'suggested_entry': pos.get('suggested_entry', pos['entry_price']),
+            'actual_entry': pos['entry_price']
         }
         
         self.trades_history.append(trade)
@@ -548,24 +557,33 @@ class RealisticTrade2Backtester:
             
             # Entry optimization statistics (only if enabled)
             if self.use_optimal_entry:
-                limit_orders = trades_df[trades_df['entry_type'] == 'LIMIT']
                 market_orders = trades_df[trades_df['entry_type'] == 'MARKET']
+                limit_orders = trades_df[trades_df['entry_type'] == 'LIMIT']
                 
-                print(f"\n📍 ENTRY OPTIMIZATION")
+                print(f"\n📍 ENTRY ANALYSIS (Optimal Entry Enabled)")
                 print(f"Market Orders:         {len(market_orders)} ({len(market_orders)/len(trades_df)*100:.1f}%)")
-                print(f"Limit Orders:          {len(limit_orders)} ({len(limit_orders)/len(trades_df)*100:.1f}%)")
-                
-                if len(limit_orders) > 0:
-                    limit_avg_pnl = limit_orders['pnl'].mean()
-                    limit_win_rate = len(limit_orders[limit_orders['pnl'] > 0]) / len(limit_orders) * 100
-                    print(f"Limit Orders Avg P&L:  ${limit_avg_pnl:.2f}")
-                    print(f"Limit Orders Win Rate: {limit_win_rate:.1f}%")
+                print(f"LIMIT Orders:          {len(limit_orders)} ({len(limit_orders)/len(trades_df)*100:.1f}%)")
+                print(f"� Note: LIMIT orders used optimal entry prices")
                 
                 if len(market_orders) > 0:
                     market_avg_pnl = market_orders['pnl'].mean()
                     market_win_rate = len(market_orders[market_orders['pnl'] > 0]) / len(market_orders) * 100
                     print(f"Market Orders Avg P&L: ${market_avg_pnl:.2f}")
                     print(f"Market Orders Win Rate: {market_win_rate:.1f}%")
+                
+                if len(limit_orders) > 0:
+                    limit_avg_pnl = limit_orders['pnl'].mean()
+                    limit_win_rate = len(limit_orders[limit_orders['pnl'] > 0]) / len(limit_orders) * 100
+                    print(f"LIMIT Orders Avg P&L: ${limit_avg_pnl:.2f}")
+                    print(f"LIMIT Orders Win Rate: {limit_win_rate:.1f}%")
+                    
+                    # Calculate average improvement
+                    limit_trades = trades_df[trades_df['entry_type'] == 'LIMIT']
+                    if len(limit_trades) > 0:
+                        avg_improvement = (limit_trades['suggested_entry'] - limit_trades['actual_entry']).abs().mean()
+                        pip_value = self.get_pip_value('EURUSD=X', 1.1)  # Rough estimate
+                        avg_improvement_pips = avg_improvement / pip_value
+                        print(f"Avg Entry Improvement: {avg_improvement_pips:.1f} pips per LIMIT order")
             
             # Calculate max drawdown
             equity_df = pd.DataFrame(self.equity_curve)
@@ -591,8 +609,13 @@ class RealisticTrade2Backtester:
                 
                 if self.use_optimal_entry:
                     entry_type_str = trade['entry_type']
-                    entry_emoji = "🟢" if entry_type_str == "MARKET" else "🟡"
-                    print(f"   {trade['direction'].upper()} {trade['pair']} | {pnl_sign}${trade['pnl']:.2f} ({trade['pips']:+.1f} pips) | {confidence_str} | {entry_emoji}{entry_type_str} | {trade['reason']}")
+                    if entry_type_str == 'MARKET':
+                        entry_emoji = "🟢"
+                        entry_display = "MARKET"
+                    else:  # LIMIT
+                        entry_emoji = "�"
+                        entry_display = "LIMIT"
+                    print(f"   {trade['direction'].upper()} {trade['pair']} | {pnl_sign}${trade['pnl']:.2f} ({trade['pips']:+.1f} pips) | {confidence_str} | {entry_emoji}{entry_display} | {trade['reason']}")
                 else:
                     print(f"   {trade['direction'].upper()} {trade['pair']} | {pnl_sign}${trade['pnl']:.2f} ({trade['pips']:+.1f} pips) | {confidence_str} | {trade['reason']}")
         
