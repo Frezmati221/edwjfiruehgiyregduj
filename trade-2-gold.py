@@ -882,40 +882,36 @@ class SupervisedGoldPredictor:
         print(f"Gold model loaded from {filepath}")
 
 def load_gold_data(period="2y", interval="1h"):
-    """Load Gold data from various sources"""
+    """Load Gold futures data (GC=F only) for focused training"""
     
-    gold_symbols = {
-        'Gold_Futures': 'GC=F',
-        'Gold_ETF_GLD': 'GLD',
-        'Gold_ETF_IAU': 'IAU'
-    }
-    
+    symbol = 'GC=F'  # COMEX Gold Futures only
     data = {}
     
-    for name, symbol in gold_symbols.items():
-        print(f"Loading {name} ({symbol})...")
-        try:
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period=period, interval=interval)
-            
-            if not df.empty:
-                df.columns = [col.lower() for col in df.columns]
-                if len(df) > 500:
-                    data[name] = df
-                    print(f"✓ {name}: {len(df)} candles loaded")
-                    
-                    # Gold data quality check
-                    price_range = df['close'].max() - df['close'].min()
-                    avg_price = df['close'].mean()
-                    volatility = df['close'].pct_change().std()
-                    print(f"  Price range: ${price_range:.2f} (avg: ${avg_price:.2f})")
-                    print(f"  Daily volatility: {volatility:.4f}")
-                else:
-                    print(f"⚠️ {name}: Insufficient data ({len(df)} candles)")
+    print(f"Loading COMEX Gold Futures ({symbol})...")
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period, interval=interval)
+        
+        if not df.empty:
+            df.columns = [col.lower() for col in df.columns]
+            if len(df) > 500:
+                data['Gold_Futures_GC'] = df
+                print(f"✓ COMEX Gold Futures: {len(df)} candles loaded")
+                
+                # Gold futures data quality check
+                price_range = df['close'].max() - df['close'].min()
+                avg_price = df['close'].mean()
+                volatility = df['close'].pct_change().std()
+                print(f"  Price range: ${price_range:.2f} (avg: ${avg_price:.2f})")
+                print(f"  Daily volatility: {volatility:.4f}")
+                print(f"  📊 Training exclusively on Gold Futures (GC=F)")
+                print(f"  🎯 Optimized for COMEX Gold characteristics")
             else:
-                print(f"❌ {name}: No data received")
-        except Exception as e:
-            print(f"❌ {name}: Error loading data - {str(e)}")
+                print(f"⚠️ COMEX Gold Futures: Insufficient data ({len(df)} candles)")
+        else:
+            print(f"❌ COMEX Gold Futures: No data received")
+    except Exception as e:
+        print(f"❌ COMEX Gold Futures: Error loading data - {str(e)}")
     
     return data
 
@@ -1040,11 +1036,11 @@ if __name__ == "__main__":
     data = load_gold_data(period="2y", interval="1h")
     
     if not data:
-        print("❌ No Gold data loaded")
-        print("💡 Suggested alternatives:")
-        print("   - GC=F (Gold Futures)")
-        print("   - GLD (SPDR Gold Trust ETF)")
-        print("   - IAU (iShares Gold Trust ETF)")
+        print("❌ No Gold futures data loaded")
+        print("💡 Please check:")
+        print("   - Internet connection")
+        print("   - GC=F symbol availability")
+        print("   - Yahoo Finance access")
         exit(1)
     
     # Initialize Gold predictor
