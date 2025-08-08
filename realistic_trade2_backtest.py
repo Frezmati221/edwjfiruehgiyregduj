@@ -141,15 +141,73 @@ class RealisticTrade2Backtester:
     
     def get_pip_value(self, pair: str, price: float) -> float:
         """Calculate pip value for position sizing"""
-        if 'JPY' in pair:
+        # Handle different asset classes
+        pair_upper = pair.upper()
+        
+        if 'JPY' in pair_upper:
             return 0.01  # For JPY pairs, 1 pip = 0.01
+        elif any(metal in pair_upper for metal in ['XAU', 'GOLD', 'GC=F', 'GLD', 'IAU']):
+            return 0.01  # For Gold, 1 pip = $0.01 (per ounce)
+        elif any(oil in pair_upper for oil in ['XTI', 'CL=F', 'USO']):
+            return 0.01  # For Oil, 1 pip = $0.01 (per barrel)
+        elif pair_upper.endswith('=F'):  # Futures contracts
+            return 0.01  # Most futures use 0.01 as minimum tick
         else:
-            return 0.0001  # For other pairs, 1 pip = 0.0001
+            return 0.0001  # For forex pairs, 1 pip = 0.0001
+    
+    def get_suggested_symbols(self, failed_symbol: str) -> List[str]:
+        """Get suggested alternative symbols for common assets"""
+        symbol_upper = failed_symbol.upper()
+        suggestions = []
+        
+        if any(gold in symbol_upper for gold in ['XAUUSD', 'GOLD', 'XAU']):
+            suggestions = [
+                'GC=F (Gold Futures)',
+                'GLD (SPDR Gold Trust ETF)', 
+                'IAU (iShares Gold Trust ETF)'
+            ]
+        elif any(oil in symbol_upper for oil in ['XTIUSD', 'OIL', 'XTI']):
+            suggestions = [
+                'CL=F (Crude Oil Futures)',
+                'USO (United States Oil Fund)',
+                'XLE (Energy Select Sector SPDR Fund)'
+            ]
+        elif any(silver in symbol_upper for silver in ['XAGUSD', 'SILVER', 'XAG']):
+            suggestions = [
+                'SI=F (Silver Futures)',
+                'SLV (iShares Silver Trust ETF)'
+            ]
+        elif 'BTC' in symbol_upper or 'BITCOIN' in symbol_upper:
+            suggestions = [
+                'BTC-USD (Bitcoin)',
+                'GBTC (Grayscale Bitcoin Trust)'
+            ]
+        elif 'ETH' in symbol_upper or 'ETHEREUM' in symbol_upper:
+            suggestions = [
+                'ETH-USD (Ethereum)',
+                'ETHE (Grayscale Ethereum Trust)'
+            ]
+        
+        return suggestions
     
     def calculate_spread(self, pair: str, price: float) -> float:
-        """Calculate spread in price units"""
+        """Calculate spread in price units based on asset type"""
         pip_value = self.get_pip_value(pair, price)
-        return self.spread_pips * pip_value
+        pair_upper = pair.upper()
+        
+        # Adjust spread based on asset type
+        if any(metal in pair_upper for metal in ['XAU', 'GOLD', 'GC=F', 'GLD', 'IAU']):
+            spread_pips = 5  # Gold typically has wider spreads
+        elif any(oil in pair_upper for oil in ['XTI', 'CL=F', 'USO']):
+            spread_pips = 3  # Oil moderate spreads
+        elif pair_upper.endswith('=F'):  # Other futures
+            spread_pips = 3  # Futures moderate spreads
+        elif any(crypto in pair_upper for crypto in ['BTC', 'ETH']):
+            spread_pips = 10  # Crypto wider spreads
+        else:
+            spread_pips = self.spread_pips  # Default forex spread (2 pips)
+            
+        return spread_pips * pip_value
     
     def is_market_open(self, timestamp: datetime) -> bool:
         """Check if forex market is open"""
@@ -426,10 +484,29 @@ class RealisticTrade2Backtester:
         # Load data
         print(f"📥 Loading {pair} data...")
         ticker = yf.Ticker(pair)
-        df = ticker.history(start=start_date, end=end_date, interval='1h')
+        
+        try:
+            df = ticker.history(start=start_date, end=end_date, interval='1h')
+        except Exception as e:
+            print(f"❌ Error loading data for {pair}: {e}")
+            suggestions = self.get_suggested_symbols(pair)
+            if suggestions:
+                print(f"💡 Suggested alternatives for {pair}:")
+                for suggestion in suggestions:
+                    print(f"   - {suggestion}")
+            return
         
         if df.empty:
             print(f"❌ No data for {pair}")
+            suggestions = self.get_suggested_symbols(pair)
+            if suggestions:
+                print(f"💡 Suggested alternatives for {pair}:")
+                for suggestion in suggestions:
+                    print(f"   - {suggestion}")
+                print(f"\n🔄 Try running with one of these symbols:")
+                for i, suggestion in enumerate(suggestions[:3]):
+                    symbol = suggestion.split(' ')[0]
+                    print(f"   python realistic_trade2_backtest.py --model best_model.pth --pair {symbol} --start {start_date} --end {end_date}")
             return
             
         # Normalize column names
