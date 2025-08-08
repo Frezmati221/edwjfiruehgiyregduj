@@ -14,13 +14,14 @@ from typing import Dict, List
 import warnings
 import matplotlib.pyplot as plt
 import json
+import talib
 warnings.filterwarnings('ignore')
 
 # Import compatible predictor
 from compatible_trade2_predictor import CompatibleSupervisedForexPredictor
 
 class RealisticTrade2Backtester:
-    def __init__(self, model_path: str, initial_balance: float = 1000.0):
+    def __init__(self, model_path: str, initial_balance: float = 1000.0, use_optimal_entry: bool = True):
         """Initialize realistic backtester for trade-2.py model"""
         self.initial_balance = initial_balance
         self.current_balance = initial_balance
@@ -28,6 +29,7 @@ class RealisticTrade2Backtester:
         self.trades_history = []
         self.model_path = model_path
         self.predictor = None
+        self.use_optimal_entry = use_optimal_entry
         
         # Trading parameters - more conservative for supervised learning model
         self.leverage = 30  # 1:100 leverage
@@ -60,6 +62,7 @@ class RealisticTrade2Backtester:
         print(f"🎯 Risk per trade: {self.risk_per_trade:.1%}")
         print(f"🤖 Min confidence: {self.min_confidence:.1%}")
         print(f"📊 Min risk-reward: {self.min_risk_reward}:1")
+        print(f"📍 Optimal entry: {'Enabled' if use_optimal_entry else 'Disabled'}")
         
         self.load_model()
     
@@ -78,6 +81,63 @@ class RealisticTrade2Backtester:
             import traceback
             traceback.print_exc()
             raise
+    
+    def calculate_optimal_entry(self, df: pd.DataFrame, action: str, current_price: float, pair: str) -> dict:
+        """Calculate optimal entry price based on market conditions"""
+        # Get recent price data for technical analysis
+        close_prices = df['close'].values[-50:].astype(np.float64)
+        high_prices = df['high'].values[-50:].astype(np.float64)
+        low_prices = df['low'].values[-50:].astype(np.float64)
+        
+        # Calculate support/resistance levels
+        resistance_20 = df['high'].rolling(20).max().iloc[-1]
+        support_20 = df['low'].rolling(20).min().iloc[-1]
+        
+        # Calculate ATR for volatility assessment
+        atr = talib.ATR(high_prices, low_prices, close_prices, timeperiod=14)[-1]
+        
+        # Get pip value for this pair
+        pip_value = self.get_pip_value(pair, current_price)
+        
+        # Calculate entry suggestions
+        entry_suggestions = {
+            'current_price': current_price,
+            'market_entry': current_price,  # Immediate market entry
+            'optimal_entry': current_price,  # Will be calculated
+            'entry_type': 'MARKET',
+            'support_level': support_20,
+            'resistance_level': resistance_20,
+            'atr': atr,
+            'entry_distance_pips': 0
+        }
+        
+        if action == 'long':
+            # For LONG positions, suggest entry on pullbacks
+            pullback_entry = current_price - (atr * 0.3)  # 30% ATR pullback
+            
+            # Choose the better entry (closer to support but not too far from current)
+            if pullback_entry > support_20 and (current_price - pullback_entry) / current_price < 0.005:  # Within 0.5%
+                entry_suggestions['optimal_entry'] = pullback_entry
+                entry_suggestions['entry_type'] = 'LIMIT'
+                entry_suggestions['entry_distance_pips'] = (current_price - pullback_entry) / pip_value
+            else:
+                entry_suggestions['optimal_entry'] = current_price
+                entry_suggestions['entry_type'] = 'MARKET'
+                
+        elif action == 'short':
+            # For SHORT positions, suggest entry on bounces
+            bounce_entry = current_price + (atr * 0.3)  # 30% ATR bounce
+            
+            # Choose the better entry (closer to resistance but not too far from current)
+            if bounce_entry < resistance_20 and (bounce_entry - current_price) / current_price < 0.005:  # Within 0.5%
+                entry_suggestions['optimal_entry'] = bounce_entry
+                entry_suggestions['entry_type'] = 'LIMIT'
+                entry_suggestions['entry_distance_pips'] = (bounce_entry - current_price) / pip_value
+            else:
+                entry_suggestions['optimal_entry'] = current_price
+                entry_suggestions['entry_type'] = 'MARKET'
+        
+        return entry_suggestions
     
     def get_pip_value(self, pair: str, price: float) -> float:
         """Calculate pip value for position sizing"""
@@ -130,13 +190,19 @@ class RealisticTrade2Backtester:
         return True
     
     def get_model_prediction(self, df: pd.DataFrame, pair: str):
-        """Get prediction from trained supervised learning model"""
+        """Get prediction from trained supervised learning model with optional entry suggestions"""
         try:
             # Clean pair name for prediction (remove =X suffix)
             clean_pair = pair.replace('=X', '')
             
             # Use the predictor's predict method with current confidence threshold
             prediction = self.predictor.predict(df, min_confidence=self.min_confidence)
+            
+            # Add optimal entry suggestions if enabled and we have a trading signal
+            if self.use_optimal_entry and prediction['action'] != 'hold':
+                current_price = df['close'].iloc[-1]
+                entry_info = self.calculate_optimal_entry(df, prediction['action'], current_price, pair)
+                prediction['entry_info'] = entry_info
             
             return prediction
             
@@ -162,7 +228,7 @@ class RealisticTrade2Backtester:
         return position_size
     
     def open_position(self, pair: str, prediction: dict, price: float, timestamp: datetime):
-        """Open a new position based on model prediction"""
+        """Open a new position based on model prediction using optimal entry"""
         if self.current_position:
             return  # Already have a position
             
@@ -186,11 +252,29 @@ class RealisticTrade2Backtester:
         # Calculate spread
         spread = self.calculate_spread(pair, price)
         
-        # Entry price with spread
-        if action == 'long':
-            entry_price = price + spread
+        # Use optimal entry if available and enabled, otherwise use market entry
+        optimal_entry = price  # Default to current price
+        entry_type = 'MARKET'
+        
+        if self.use_optimal_entry and 'entry_info' in prediction:
+            entry_info = prediction['entry_info']
+            optimal_entry = entry_info['optimal_entry']
+            entry_type = entry_info['entry_type']
+            
+            # For backtesting, we'll use the optimal entry price
+            # In real trading, LIMIT orders would need to wait for price to reach optimal level
+            print(f"📍 Using {entry_type} entry: {optimal_entry:.5f} (vs market {price:.5f})")
+            if entry_type == 'LIMIT':
+                distance_pips = entry_info.get('entry_distance_pips', 0)
+                print(f"📏 Entry improvement: {distance_pips:.1f} pips")
         else:
-            entry_price = price - spread
+            print(f"📍 Using MARKET entry: {price:.5f}")
+        
+        # Entry price with spread (using optimal entry)
+        if action == 'long':
+            entry_price = optimal_entry + spread
+        else:
+            entry_price = optimal_entry - spread
             
         # Calculate position size using 2% risk management
         position_size = self.calculate_position_size(entry_price, stop_loss, pair)
@@ -210,7 +294,9 @@ class RealisticTrade2Backtester:
             'take_profit': take_profit,
             'timestamp': timestamp,
             'confidence': confidence,
-            'risk_reward': prediction.get('risk_reward_ratio', 0)
+            'risk_reward': prediction.get('risk_reward_ratio', 0),
+            'entry_type': entry_type,
+            'optimal_entry': optimal_entry
         }
         
         self.daily_trade_count += 1
@@ -221,9 +307,16 @@ class RealisticTrade2Backtester:
         risk_pips = abs(entry_price - stop_loss) / pip_value
         reward_pips = abs(take_profit - entry_price) / pip_value
         
-        print(f"🟢 {action.upper()} {pair}: Size={position_size:.0f} @ {entry_price:.5f}")
+        print(f"🟢 {action.upper()} {pair}: Size={position_size:.0f} @ {entry_price:.5f} ({entry_type})")
         print(f"   📊 SL={stop_loss:.5f} ({risk_pips:.1f} pips) | TP={take_profit:.5f} ({reward_pips:.1f} pips)")
         print(f"   🎯 Confidence: {confidence:.1%} | RR: 1:{prediction.get('risk_reward_ratio', 0):.2f}")
+        
+        # Show entry optimization if used
+        if self.use_optimal_entry and 'entry_info' in prediction and entry_type == 'LIMIT':
+            entry_info = prediction['entry_info']
+            print(f"   📍 Entry optimized by {entry_info.get('entry_distance_pips', 0):.1f} pips")
+            print(f"   🔺 Resistance: {entry_info['resistance_level']:.5f}")
+            print(f"   🔻 Support: {entry_info['support_level']:.5f}")
     
     def check_exit_conditions(self, current_price: float, timestamp: datetime) -> bool:
         """Check if position should be closed"""
@@ -301,7 +394,9 @@ class RealisticTrade2Backtester:
             'confidence': pos['confidence'],
             'risk_reward': pos['risk_reward'],
             'balance_before': old_balance,
-            'balance_after': self.current_balance
+            'balance_after': self.current_balance,
+            'entry_type': pos.get('entry_type', 'MARKET'),
+            'optimal_entry': pos.get('optimal_entry', pos['entry_price'])
         }
         
         self.trades_history.append(trade)
@@ -451,6 +546,27 @@ class RealisticTrade2Backtester:
             print(f"Average Confidence:    {trades_df['confidence'].mean():.1%}")
             print(f"Average Risk-Reward:   1:{trades_df['risk_reward'].mean():.2f}")
             
+            # Entry optimization statistics (only if enabled)
+            if self.use_optimal_entry:
+                limit_orders = trades_df[trades_df['entry_type'] == 'LIMIT']
+                market_orders = trades_df[trades_df['entry_type'] == 'MARKET']
+                
+                print(f"\n📍 ENTRY OPTIMIZATION")
+                print(f"Market Orders:         {len(market_orders)} ({len(market_orders)/len(trades_df)*100:.1f}%)")
+                print(f"Limit Orders:          {len(limit_orders)} ({len(limit_orders)/len(trades_df)*100:.1f}%)")
+                
+                if len(limit_orders) > 0:
+                    limit_avg_pnl = limit_orders['pnl'].mean()
+                    limit_win_rate = len(limit_orders[limit_orders['pnl'] > 0]) / len(limit_orders) * 100
+                    print(f"Limit Orders Avg P&L:  ${limit_avg_pnl:.2f}")
+                    print(f"Limit Orders Win Rate: {limit_win_rate:.1f}%")
+                
+                if len(market_orders) > 0:
+                    market_avg_pnl = market_orders['pnl'].mean()
+                    market_win_rate = len(market_orders[market_orders['pnl'] > 0]) / len(market_orders) * 100
+                    print(f"Market Orders Avg P&L: ${market_avg_pnl:.2f}")
+                    print(f"Market Orders Win Rate: {market_win_rate:.1f}%")
+            
             # Calculate max drawdown
             equity_df = pd.DataFrame(self.equity_curve)
             if not equity_df.empty:
@@ -472,7 +588,13 @@ class RealisticTrade2Backtester:
             for _, trade in trades_df.tail(10).iterrows():
                 pnl_sign = "+" if trade['pnl'] > 0 else ""
                 confidence_str = f"{trade['confidence']:.0%}"
-                print(f"   {trade['direction'].upper()} {trade['pair']} | {pnl_sign}${trade['pnl']:.2f} ({trade['pips']:+.1f} pips) | {confidence_str} | {trade['reason']}")
+                
+                if self.use_optimal_entry:
+                    entry_type_str = trade['entry_type']
+                    entry_emoji = "🟢" if entry_type_str == "MARKET" else "🟡"
+                    print(f"   {trade['direction'].upper()} {trade['pair']} | {pnl_sign}${trade['pnl']:.2f} ({trade['pips']:+.1f} pips) | {confidence_str} | {entry_emoji}{entry_type_str} | {trade['reason']}")
+                else:
+                    print(f"   {trade['direction'].upper()} {trade['pair']} | {pnl_sign}${trade['pnl']:.2f} ({trade['pips']:+.1f} pips) | {confidence_str} | {trade['reason']}")
         
         else:
             print("\n⚠️ No trades executed during backtest period")
@@ -522,13 +644,19 @@ def main():
     parser.add_argument('--balance', type=float, default=1000.0, help='Initial balance')
     parser.add_argument('--pair', type=str, default='EURUSD=X', help='Currency pair to trade')
     parser.add_argument('--confidence', type=float, default=0.6, help='Minimum confidence threshold (0.0-1.0)')
+    parser.add_argument('--optimal-entry', action='store_true', default=True, help='Use optimal entry suggestions (default: enabled)')
+    parser.add_argument('--no-optimal-entry', action='store_true', help='Disable optimal entry suggestions')
     
     args = parser.parse_args()
+    
+    # Handle optimal entry flag
+    use_optimal_entry = args.optimal_entry and not args.no_optimal_entry
     
     # Initialize backtester
     backtester = RealisticTrade2Backtester(
         model_path=args.model,
-        initial_balance=args.balance
+        initial_balance=args.balance,
+        use_optimal_entry=use_optimal_entry
     )
     
     # Set confidence threshold if provided
