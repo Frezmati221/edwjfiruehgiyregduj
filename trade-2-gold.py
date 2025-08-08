@@ -129,12 +129,12 @@ class SupervisedGoldPredictor:
         
         features_df = pd.DataFrame(index=df.index)
         
-        # Price features - more important for Gold
-        features_df['returns'] = df['close'].pct_change()
-        features_df['log_returns'] = np.log(df['close'] / df['close'].shift(1))
-        features_df['high_low_ratio'] = df['high'] / df['low']
-        features_df['close_open_ratio'] = df['close'] / df['open']
-        features_df['price_momentum'] = df['close'] / df['close'].shift(5)
+        # Price features - more important for Gold (with safe calculations)
+        features_df['returns'] = df['close'].pct_change().clip(-0.5, 0.5)  # Clip extreme returns
+        features_df['log_returns'] = np.log(df['close'] / df['close'].shift(1)).fillna(0)
+        features_df['high_low_ratio'] = (df['high'] / (df['low'] + 1e-8)).clip(0.5, 5.0)  # Prevent division by zero
+        features_df['close_open_ratio'] = (df['close'] / (df['open'] + 1e-8)).clip(0.5, 2.0)
+        features_df['price_momentum'] = (df['close'] / (df['close'].shift(5) + 1e-8)).clip(0.5, 2.0)
         
         # Gold-specific price levels
         features_df['price_level'] = df['close'] // 50  # Round to nearest $50
@@ -152,11 +152,11 @@ class SupervisedGoldPredictor:
         features_df['vol_ratio_5_20'] = features_df['volatility_5'] / features_df['volatility_20']
         features_df['vol_ratio_10_30'] = features_df['volatility_10'] / features_df['volatility_30']
         
-        # Multiple timeframe SMAs - critical for Gold trends
+        # Multiple timeframe SMAs - critical for Gold trends (with safe calculations)
         for period in [5, 10, 20, 50, 100, 200]:
             features_df[f'sma_{period}'] = df['close'].rolling(period).mean()
             features_df[f'sma_{period}_slope'] = features_df[f'sma_{period}'].diff()
-            features_df[f'price_to_sma_{period}'] = df['close'] / features_df[f'sma_{period}']
+            features_df[f'price_to_sma_{period}'] = (df['close'] / (features_df[f'sma_{period}'] + 1e-8)).clip(0.5, 2.0)
             features_df[f'sma_{period}_above'] = (df['close'] > features_df[f'sma_{period}']).astype(int)
         
         # SMA relationships - Gold trend strength
@@ -172,10 +172,10 @@ class SupervisedGoldPredictor:
             (features_df['sma_20'] < features_df['sma_50'])
         ).astype(int)
         
-        # EMAs with Gold-specific periods
+        # EMAs with Gold-specific periods (with safe calculations)
         for period in [9, 12, 21, 26, 50]:
             features_df[f'ema_{period}'] = df['close'].ewm(span=period).mean()
-            features_df[f'price_to_ema_{period}'] = df['close'] / features_df[f'ema_{period}']
+            features_df[f'price_to_ema_{period}'] = (df['close'] / (features_df[f'ema_{period}'] + 1e-8)).clip(0.5, 2.0)
             features_df[f'ema_{period}_slope'] = features_df[f'ema_{period}'].diff()
         
         # Convert price arrays to float64 for TA-Lib compatibility
@@ -219,22 +219,25 @@ class SupervisedGoldPredictor:
         features_df['stoch_overbought'] = ((slowk > 80) & (slowd > 80)).astype(int)
         features_df['stoch_oversold'] = ((slowk < 20) & (slowd < 20)).astype(int)
         
-        # Bollinger Bands - critical for Gold range trading
+        # Bollinger Bands - critical for Gold range trading (with safe calculations)
         for period in [10, 20, 30]:
             upper, middle, lower = talib.BBANDS(close_prices, timeperiod=period, nbdevup=2, nbdevdn=2)
             features_df[f'bb_upper_{period}'] = upper
             features_df[f'bb_lower_{period}'] = lower
             features_df[f'bb_middle_{period}'] = middle
-            features_df[f'bb_width_{period}'] = (upper - lower) / middle
-            features_df[f'bb_position_{period}'] = (df['close'] - lower) / (upper - lower)
+            features_df[f'bb_width_{period}'] = (upper - lower) / (middle + 1e-8)
+            bb_range = upper - lower
+            features_df[f'bb_position_{period}'] = np.where(bb_range > 1e-8, 
+                                                           (df['close'] - lower) / bb_range, 
+                                                           0.5).clip(0, 1)
             features_df[f'bb_squeeze_{period}'] = (features_df[f'bb_width_{period}'] < features_df[f'bb_width_{period}'].rolling(20).quantile(0.2)).astype(int)
         
-        # ATR and volatility - crucial for Gold
+        # ATR and volatility - crucial for Gold (with safe calculations)
         for period in [14, 20, 30]:
             features_df[f'atr_{period}'] = talib.ATR(high_prices, low_prices, close_prices, timeperiod=period)
-            features_df[f'atr_{period}_pct'] = features_df[f'atr_{period}'] / df['close']
+            features_df[f'atr_{period}_pct'] = features_df[f'atr_{period}'] / (df['close'] + 1e-8)
         
-        features_df['atr_ratio'] = features_df['atr_14'] / features_df['atr_30']
+        features_df['atr_ratio'] = (features_df['atr_14'] / (features_df['atr_30'] + 1e-8)).clip(0.1, 10.0)
         features_df['atr_expansion'] = (features_df['atr_14'] > features_df['atr_14'].rolling(10).mean()).astype(int)
         
         # Momentum indicators
@@ -259,12 +262,12 @@ class SupervisedGoldPredictor:
         features_df['adx_strong_trend'] = (features_df['adx'] > 25).astype(int)
         features_df['di_diff'] = features_df['plus_di'] - features_df['minus_di']
         
-        # Support/Resistance levels with Gold-specific periods
+        # Support/Resistance levels with Gold-specific periods (with safe calculations)
         for period in [20, 50, 100, 200]:
             features_df[f'resistance_{period}'] = df['high'].rolling(period).max()
             features_df[f'support_{period}'] = df['low'].rolling(period).min()
-            features_df[f'price_to_resistance_{period}'] = df['close'] / features_df[f'resistance_{period}']
-            features_df[f'price_to_support_{period}'] = df['close'] / features_df[f'support_{period}']
+            features_df[f'price_to_resistance_{period}'] = (df['close'] / (features_df[f'resistance_{period}'] + 1e-8)).clip(0.5, 1.5)
+            features_df[f'price_to_support_{period}'] = (df['close'] / (features_df[f'support_{period}'] + 1e-8)).clip(0.5, 2.0)
             features_df[f'near_resistance_{period}'] = (features_df[f'price_to_resistance_{period}'] > 0.995).astype(int)
             features_df[f'near_support_{period}'] = (features_df[f'price_to_support_{period}'] < 1.005).astype(int)
         
@@ -273,7 +276,7 @@ class SupervisedGoldPredictor:
             volume_data = df['volume'].values.astype(np.float64)
             for period in [10, 20, 50]:
                 features_df[f'volume_sma_{period}'] = df['volume'].rolling(period).mean()
-                features_df[f'volume_ratio_{period}'] = df['volume'] / features_df[f'volume_sma_{period}']
+                features_df[f'volume_ratio_{period}'] = (df['volume'] / (features_df[f'volume_sma_{period}'] + 1e-8)).clip(0.1, 10.0)
             
             features_df['volume_spike'] = (df['volume'] > df['volume'].rolling(20).mean() * 2).astype(int)
             features_df['obv'] = talib.OBV(close_prices, volume_data)
@@ -286,15 +289,17 @@ class SupervisedGoldPredictor:
         features_df['inside_bar'] = ((df['high'] < df['high'].shift(1)) & (df['low'] > df['low'].shift(1))).astype(int)
         features_df['outside_bar'] = ((df['high'] > df['high'].shift(1)) & (df['low'] < df['low'].shift(1))).astype(int)
         
-        # Enhanced candlestick analysis for Gold
+        # Enhanced candlestick analysis for Gold (with safe calculations)
         features_df['body_size'] = abs(df['close'] - df['open'])
         features_df['upper_shadow'] = df['high'] - np.maximum(df['close'], df['open'])
         features_df['lower_shadow'] = np.minimum(df['close'], df['open']) - df['low']
-        features_df['body_to_range'] = features_df['body_size'] / (df['high'] - df['low'] + 1e-8)
-        features_df['shadow_ratio'] = (features_df['upper_shadow'] + features_df['lower_shadow']) / features_df['body_size']
+        range_size = df['high'] - df['low'] + 1e-8
+        features_df['body_to_range'] = features_df['body_size'] / range_size
+        features_df['shadow_ratio'] = (features_df['upper_shadow'] + features_df['lower_shadow']) / (features_df['body_size'] + 1e-8)
         
-        # Doji detection
-        features_df['doji'] = (features_df['body_size'] < (df['high'] - df['low']) * 0.1).astype(int)
+        # Doji detection (with safe calculations)
+        range_size = df['high'] - df['low'] + 1e-8
+        features_df['doji'] = (features_df['body_size'] < range_size * 0.1).astype(int)
         features_df['hammer'] = (
             (features_df['lower_shadow'] > features_df['body_size'] * 2) &
             (features_df['upper_shadow'] < features_df['body_size'] * 0.5)
@@ -314,7 +319,7 @@ class SupervisedGoldPredictor:
             # Market day features
             features_df['monday'] = (df.index.dayofweek == 0).astype(int)
             features_df['friday'] = (df.index.dayofweek == 4).astype(int)
-            features_df['weekend_gap'] = features_df['monday'] * abs(df['open'] - df['close'].shift(1)) / df['close'].shift(1)
+            features_df['weekend_gap'] = features_df['monday'] * abs(df['open'] - df['close'].shift(1)) / (df['close'].shift(1) + 1e-8)
         
         # Gold-specific economic indicators (proxy)
         features_df['price_acceleration'] = features_df['returns'].diff()
@@ -326,8 +331,12 @@ class SupervisedGoldPredictor:
         features_df['long_trend'] = (features_df['sma_50'] > features_df['sma_200']).astype(int)
         features_df['trend_alignment'] = features_df['short_trend'] + features_df['medium_trend'] + features_df['long_trend']
         
-        # Fill NaN values
+        # Fill NaN values and clean infinite values
+        features_df = features_df.replace([np.inf, -np.inf], np.nan)
         features_df = features_df.fillna(method='ffill').fillna(0)
+        
+        # Additional safety check for remaining infinite values
+        features_df = features_df.clip(-1e6, 1e6)  # Clip extreme values
         
         return features_df
     
@@ -432,7 +441,23 @@ class SupervisedGoldPredictor:
         X = np.vstack(all_features)
         y = np.hstack(all_labels)
         
+        # Additional data cleaning for safety
+        print(f"Cleaning data for infinite/NaN values...")
+        
+        # Replace infinite values
+        X = np.where(np.isfinite(X), X, 0)
+        
+        # Replace NaN values
+        X = np.nan_to_num(X, nan=0.0, posinf=1e6, neginf=-1e6)
+        
+        # Final check for data quality
+        if not np.all(np.isfinite(X)):
+            print("⚠️ Warning: Non-finite values detected, applying final cleanup...")
+            X = np.clip(X, -1e6, 1e6)
+        
         print(f"Combined data: {len(X)} samples")
+        print(f"Feature shape: {X.shape}")
+        print(f"Data range: [{X.min():.6f}, {X.max():.6f}]")
         print(f"Initial class distribution: Long={np.sum(y==0)}, Short={np.sum(y==1)}, Hold={np.sum(y==2)}")
         
         # Check if we have any data at all
@@ -465,6 +490,10 @@ class SupervisedGoldPredictor:
             
             X = np.vstack(all_features)
             y = np.hstack(all_labels)
+            
+            # Clean the re-processed data too
+            X = np.where(np.isfinite(X), X, 0)
+            X = np.nan_to_num(X, nan=0.0, posinf=1e6, neginf=-1e6)
         
         # Balance classes - keep all signals but limit holds
         if n_hold > 0:
