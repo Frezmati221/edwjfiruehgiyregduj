@@ -817,8 +817,8 @@ class SupervisedForexPredictor:
         
         print(f"Model loaded from {filepath}")
 
-def load_forex_data(period="5y", interval="1h"):
-    """Load forex data from Yahoo Finance"""
+def load_forex_data(period="2y", interval="1h"):
+    """Load forex data from Yahoo Finance with fallback strategies"""
     
     pairs = {
         'EURUSD': 'EURUSD=X',
@@ -831,30 +831,54 @@ def load_forex_data(period="5y", interval="1h"):
     
     data = {}
     
+    # Try different periods and intervals as fallback
+    fallback_configs = [
+        (period, interval),           # Primary: requested period and interval
+        ("2y", interval),             # Fallback 1: 2 years with same interval
+        ("1y", interval),             # Fallback 2: 1 year with same interval
+        ("2y", "4h"),                 # Fallback 3: 2 years with 4h interval
+        ("730d", interval),           # Fallback 4: 730 days (Yahoo's limit)
+        ("1y", "4h"),                 # Fallback 5: 1 year with 4h interval
+    ]
+    
     for pair, symbol in pairs.items():
         print(f"Loading {pair}...")
-        try:
-            ticker = yf.Ticker(symbol)
-            df = ticker.history(period=period, interval=interval)
-            
-            if not df.empty:
-                df.columns = [col.lower() for col in df.columns]
-                if len(df) > 1500:  # Ensure minimum 1500 candles for 1000-sequence analysis + training
-                    data[pair] = df
-                    print(f"✓ {pair}: {len(df)} candles loaded")
-                    
-                    # Quick data quality check
-                    price_range = df['close'].max() - df['close'].min()
-                    avg_price = df['close'].mean()
-                    volatility = df['close'].pct_change().std()
-                    print(f"  Price range: {price_range:.5f} (avg: {avg_price:.5f})")
-                    print(f"  Volatility: {volatility:.4f}")
+        df = None
+        
+        for attempt, (test_period, test_interval) in enumerate(fallback_configs):
+            try:
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(period=test_period, interval=test_interval)
+                
+                if not df.empty and len(df) > 1000:  # Need at least 1000 candles
+                    if attempt > 0:
+                        print(f"  ✓ Success with fallback: {test_period} period, {test_interval} interval")
+                    break
+                elif not df.empty:
+                    print(f"  ⚠️ Insufficient data with {test_period}/{test_interval}: {len(df)} candles")
                 else:
-                    print(f"⚠️ {pair}: Insufficient data ({len(df)} candles, need >1500)")
+                    print(f"  ❌ No data with {test_period}/{test_interval}")
+                    
+            except Exception as e:
+                print(f"  ❌ Error with {test_period}/{test_interval}: {str(e)}")
+                continue
+        
+        if df is not None and not df.empty and len(df) > 1000:
+            df.columns = [col.lower() for col in df.columns]
+            if len(df) > 1500:  # Ensure minimum 1500 candles for 1000-sequence analysis + training
+                data[pair] = df
+                print(f"✓ {pair}: {len(df)} candles loaded")
+                
+                # Quick data quality check
+                price_range = df['close'].max() - df['close'].min()
+                avg_price = df['close'].mean()
+                volatility = df['close'].pct_change().std()
+                print(f"  Price range: {price_range:.5f} (avg: {avg_price:.5f})")
+                print(f"  Volatility: {volatility:.4f}")
             else:
-                print(f"❌ {pair}: No data received")
-        except Exception as e:
-            print(f"❌ {pair}: Error loading data - {str(e)}")
+                print(f"⚠️ {pair}: Insufficient data ({len(df)} candles, need >1500)")
+        else:
+            print(f"❌ {pair}: No suitable data found after all fallback attempts")
     
     return data
 
@@ -992,11 +1016,12 @@ if __name__ == "__main__":
     print("="*80)
     print("🎯 SUPERVISED LEARNING FOREX PREDICTOR - HIGH WIN RATE SYSTEM")
     print("🔍 NOW ANALYZING 1000 CANDLES FOR ENHANCED PATTERN RECOGNITION")
+    print("📊 WITH SMART FALLBACK DATA LOADING STRATEGIES")
     print("="*80)
     
     # Load data
-    print("\n📊 Loading 5 years of forex data for comprehensive analysis...")
-    data = load_forex_data(period="5y", interval="1h")
+    print("\n📊 Loading forex data with fallback strategies...")
+    data = load_forex_data(period="2y", interval="1h")
     
     if not data:
         print("❌ No data loaded")
@@ -1030,4 +1055,5 @@ if __name__ == "__main__":
     print("   🎯 The system will only trade when pattern confidence exceeds threshold.")
     print("   🏆 This approach prioritizes WIN RATE over trade frequency.")
     print("   💪 Dynamic SL/TP calculation with improved 2:1 risk-reward ratio!")
-    print("   📈 Extended 5-year historical data for robust pattern learning!")
+    print("   📈 Smart fallback data loading handles Yahoo Finance limitations!")
+    print("   🔄 Automatically adjusts period/interval to maximize available data!")
