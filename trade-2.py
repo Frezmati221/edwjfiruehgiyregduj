@@ -30,7 +30,7 @@ else:
 class ForexPatternDataset(Dataset):
     """Dataset for supervised learning of forex patterns"""
     
-    def __init__(self, features, labels, sequence_length=60):
+    def __init__(self, features, labels, sequence_length=1000):
         self.features = torch.FloatTensor(features)
         self.labels = torch.FloatTensor(labels)
         self.sequence_length = sequence_length
@@ -113,7 +113,7 @@ class SupervisedForexPredictor:
     def __init__(self):
         self.scaler = StandardScaler()
         self.model = None
-        self.sequence_length = 60  # Look at 60 candles of history
+        self.sequence_length = 1000  # Look at 1000 candles of history for better pattern analysis
         self.min_confidence = 0.5  # Start with lower threshold, increase gradually
         
     def create_advanced_features(self, df):
@@ -593,15 +593,16 @@ class SupervisedForexPredictor:
     def calculate_optimal_sl_tp(self, df, action, risk_reward_ratio=2.0):
         """Calculate optimal Stop Loss and Take Profit levels"""
         
-        if len(df) < 50:
+        if len(df) < 200:  # Increased minimum requirement for 1000-candle analysis
             return None, None
         
         current_price = df['close'].iloc[-1]
         
-        # Calculate ATR for dynamic SL/TP
-        high_prices = df['high'].values[-50:].astype(np.float64)
-        low_prices = df['low'].values[-50:].astype(np.float64)
-        close_prices = df['close'].values[-50:].astype(np.float64)
+        # Calculate ATR for dynamic SL/TP using longer lookback period
+        lookback_period = min(100, len(df) - 1)  # Use more data for stable calculations
+        high_prices = df['high'].values[-lookback_period:].astype(np.float64)
+        low_prices = df['low'].values[-lookback_period:].astype(np.float64)
+        close_prices = df['close'].values[-lookback_period:].astype(np.float64)
         
         atr_14 = talib.ATR(high_prices, low_prices, close_prices, timeperiod=14)[-1]
         atr_20 = talib.ATR(high_prices, low_prices, close_prices, timeperiod=20)[-1]
@@ -609,21 +610,21 @@ class SupervisedForexPredictor:
         # Use average ATR for more stable SL/TP
         avg_atr = (atr_14 + atr_20) / 2
         
-        # Calculate support/resistance levels
-        support_20 = df['low'].rolling(20).min().iloc[-1]
-        resistance_20 = df['high'].rolling(20).max().iloc[-1]
+        # Calculate support/resistance levels using longer periods for more reliable levels
         support_50 = df['low'].rolling(50).min().iloc[-1]
         resistance_50 = df['high'].rolling(50).max().iloc[-1]
+        support_100 = df['low'].rolling(100).min().iloc[-1]
+        resistance_100 = df['high'].rolling(100).max().iloc[-1]
         
-        # Calculate volatility-based SL distance
-        volatility = df['close'].pct_change().rolling(20).std().iloc[-1]
+        # Calculate volatility-based SL distance using longer period
+        volatility = df['close'].pct_change().rolling(50).std().iloc[-1]
         vol_multiplier = max(1.5, min(3.0, volatility * 100))  # Scale volatility
         
         if action == 'long':
             # For long positions
             # SL options: ATR-based, support levels, or volatility-based
             sl_atr = current_price - (avg_atr * 1.5)
-            sl_support = min(support_20, support_50)
+            sl_support = min(support_50, support_100)
             sl_vol = current_price - (current_price * volatility * vol_multiplier)
             
             # Choose the most conservative (highest) SL
@@ -639,9 +640,9 @@ class SupervisedForexPredictor:
             take_profit = current_price + (risk_distance * risk_reward_ratio)
             
             # Adjust TP if it hits resistance
-            if take_profit > resistance_20:
+            if take_profit > resistance_50:
                 # Use resistance as TP and recalculate risk-reward
-                take_profit = resistance_20 * 0.995  # Slightly below resistance
+                take_profit = resistance_50 * 0.995  # Slightly below resistance
                 actual_rr = (take_profit - current_price) / risk_distance
                 if actual_rr < 1.2:  # If RR becomes too low, skip trade
                     return None, None
@@ -650,7 +651,7 @@ class SupervisedForexPredictor:
             # For short positions
             # SL options: ATR-based, resistance levels, or volatility-based
             sl_atr = current_price + (avg_atr * 1.5)
-            sl_resistance = max(resistance_20, resistance_50)
+            sl_resistance = max(resistance_50, resistance_100)
             sl_vol = current_price + (current_price * volatility * vol_multiplier)
             
             # Choose the most conservative (lowest) SL
@@ -666,9 +667,9 @@ class SupervisedForexPredictor:
             take_profit = current_price - (risk_distance * risk_reward_ratio)
             
             # Adjust TP if it hits support
-            if take_profit < support_20:
+            if take_profit < support_50:
                 # Use support as TP and recalculate risk-reward
-                take_profit = support_20 * 1.005  # Slightly above support
+                take_profit = support_50 * 1.005  # Slightly above support
                 actual_rr = (current_price - take_profit) / risk_distance
                 if actual_rr < 1.2:  # If RR becomes too low, skip trade
                     return None, None
@@ -816,7 +817,7 @@ class SupervisedForexPredictor:
         
         print(f"Model loaded from {filepath}")
 
-def load_forex_data(period="2y", interval="1h"):
+def load_forex_data(period="5y", interval="1h"):
     """Load forex data from Yahoo Finance"""
     
     pairs = {
@@ -838,7 +839,7 @@ def load_forex_data(period="2y", interval="1h"):
             
             if not df.empty:
                 df.columns = [col.lower() for col in df.columns]
-                if len(df) > 500:
+                if len(df) > 1500:  # Ensure minimum 1500 candles for 1000-sequence analysis + training
                     data[pair] = df
                     print(f"✓ {pair}: {len(df)} candles loaded")
                     
@@ -849,7 +850,7 @@ def load_forex_data(period="2y", interval="1h"):
                     print(f"  Price range: {price_range:.5f} (avg: {avg_price:.5f})")
                     print(f"  Volatility: {volatility:.4f}")
                 else:
-                    print(f"⚠️ {pair}: Insufficient data ({len(df)} candles)")
+                    print(f"⚠️ {pair}: Insufficient data ({len(df)} candles, need >1500)")
             else:
                 print(f"❌ {pair}: No data received")
         except Exception as e:
@@ -990,18 +991,20 @@ def demonstrate_sl_tp_system(predictor, data_dict):
 if __name__ == "__main__":
     print("="*80)
     print("🎯 SUPERVISED LEARNING FOREX PREDICTOR - HIGH WIN RATE SYSTEM")
+    print("🔍 NOW ANALYZING 1000 CANDLES FOR ENHANCED PATTERN RECOGNITION")
     print("="*80)
     
     # Load data
-    print("\n📊 Loading forex data...")
-    data = load_forex_data(period="2y", interval="1h")
+    print("\n📊 Loading 5 years of forex data for comprehensive analysis...")
+    data = load_forex_data(period="5y", interval="1h")
     
     if not data:
         print("❌ No data loaded")
         exit(1)
     
-    # Initialize predictor
+    # Initialize predictor with 1000-candle sequence analysis
     predictor = SupervisedForexPredictor()
+    print(f"✅ Predictor initialized with {predictor.sequence_length} candle sequence analysis")
     
     # Train model
     print("\n🚀 Training pattern recognition model...")
@@ -1023,6 +1026,8 @@ if __name__ == "__main__":
             results = backtest_high_confidence(predictor, test_df, min_confidence=min_conf)
     
     print("\n✅ Training complete! Model focuses on HIGH-CONFIDENCE patterns only.")
-    print("   The system will only trade when pattern confidence exceeds threshold.")
-    print("   This approach prioritizes WIN RATE over trade frequency.")
-    print("   🎯 Now includes dynamic SL/TP calculation with 2:1 risk-reward ratio!")
+    print("   📊 ENHANCED: Now analyzes 1000 candles for deeper pattern recognition")
+    print("   🎯 The system will only trade when pattern confidence exceeds threshold.")
+    print("   🏆 This approach prioritizes WIN RATE over trade frequency.")
+    print("   💪 Dynamic SL/TP calculation with improved 2:1 risk-reward ratio!")
+    print("   📈 Extended 5-year historical data for robust pattern learning!")
